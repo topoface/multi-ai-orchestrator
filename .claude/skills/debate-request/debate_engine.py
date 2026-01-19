@@ -11,11 +11,17 @@ from pathlib import Path
 from typing import List, Dict, Any, Tuple
 from datetime import datetime
 import anthropic
-import vertexai
-from vertexai.generative_models import GenerativeModel
+import google.generativeai as genai
 import requests
 import numpy as np
 from dotenv import load_dotenv
+
+# Supabase client (optional, only if configured)
+try:
+    from supabase import create_client, Client
+    SUPABASE_AVAILABLE = True
+except ImportError:
+    SUPABASE_AVAILABLE = False
 
 # Load environment variables from .env file
 env_path = Path(__file__).parent.parent.parent.parent / ".env"
@@ -28,9 +34,12 @@ with open(config_path) as f:
 
 # API Keys
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 PERPLEXITY_API_KEY = os.getenv('PERPLEXITY_API_KEY')
-GCP_PROJECT_ID = os.getenv('GCP_PROJECT_ID', 'phsysics')
-GCP_LOCATION = os.getenv('GCP_LOCATION', 'us-central1')
+
+# Supabase (optional)
+SUPABASE_URL = os.getenv('SUPABASE_URL')
+SUPABASE_SERVICE_ROLE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
 
 
 class DebateEngine:
@@ -43,9 +52,18 @@ class DebateEngine:
         # Initialize AI clients
         self.claude_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
-        # Initialize Vertex AI
-        vertexai.init(project=GCP_PROJECT_ID, location=GCP_LOCATION)
-        self.gemini_model = GenerativeModel('gemini-2.0-flash-exp')
+        # Initialize Gemini (direct API)
+        genai.configure(api_key=GEMINI_API_KEY)
+        self.gemini_model = genai.GenerativeModel('gemini-2.0-flash-exp')
+
+        # Initialize Supabase (optional)
+        self.supabase_client = None
+        if SUPABASE_AVAILABLE and SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY:
+            try:
+                self.supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+                print("✓ Supabase connected", file=sys.stderr)
+            except Exception as e:
+                print(f"⚠ Supabase connection failed: {e}", file=sys.stderr)
 
     def get_claude_response(self, prompt: str, context: str = "") -> str:
         """Get response from Claude"""
@@ -266,7 +284,38 @@ Be objective and focus on technical merits."""
             "perplexity_judgment": perplexity_judgment
         }
 
+        # Save to Supabase (if available)
+        if self.supabase_client:
+            self.save_to_supabase(result)
+
         return result
+
+    def save_to_supabase(self, result: Dict[str, Any]) -> None:
+        """Save debate result to Supabase"""
+        if not self.supabase_client:
+            return
+
+        try:
+            data = {
+                'topic': self.topic,
+                'claude_position': result['claude_final_position'],
+                'gemini_position': result['gemini_final_position'],
+                'consensus_score': result['consensus_score'],
+                'rounds': result['rounds'],
+                'metadata': {
+                    'timestamp': result['timestamp'],
+                    'status': result['status'],
+                    'rounds_detail': result['history'],
+                    'perplexity_judgment': result.get('perplexity_judgment'),
+                    'expert_mode': self.expert_mode
+                }
+            }
+
+            response = self.supabase_client.table('debate_results').insert(data).execute()
+            if response.data:
+                print(f"✓ Supabase: Debate saved (ID: {response.data[0]['id']})", file=sys.stderr)
+        except Exception as e:
+            print(f"⚠ Supabase save failed: {e}", file=sys.stderr)
 
 
 def format_result(result: Dict[str, Any]) -> str:

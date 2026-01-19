@@ -128,3 +128,40 @@ Gemini's maintainability-first approach contains valuable insights but overweigh
 1. **Addresses Real Pain Points**: Technical debt and maintenance costs genuinely dominate software lifecy...
 
 Full details: [debate_20260117_215618.json](debate_20260117_215618.json)
+
+
+## Decision: Supabase vs BigQuery 비교 2
+**Date**: 2026-01-19T22:38:11.012278
+**Consensus**: 0.62%
+**Status**: review_required
+
+**Final Decision**:
+# Supabase vs BigQuery: 종합 분석 및 실용적 의사결정 프레임워크
+
+## 핵심 합의사항
+
+양측 논의를 종합하면 다음 원칙들에 동의합니다:
+
+1. **Supabase = OLTP, BigQuery = OLAP**는 명확한 구분
+2. **하이브리드 아키�ecture는 복잡성을 수반**하지만 필요할 수 있음
+3. **중간 규모 데이터**(수백 GB ~ 수 TB)에 대한 전략이 중요
+4. **팀 역량과 예산**이 기술 선택에 큰 영향을 미침
+
+## 실용적 의사결정 프레임워크
+
+### **단계 1: 워크로드 분류**
+
+```
+질문 1: 주 사용 패턴이 무엇인가?
+├─ 트랜잭션 (CRUD, 실시간 업데이트) → Supabase
+├─ 분석 (집계, 리포팅) → BigQuery
+└─ 둘 다 → 단계 2로
+
+질문 2: 데이터 볼륨은?
+├─ < 100GB → Supabase 단독
+├─ 100GB - 1TB → 하이브리드 고려
+└─ > 1TB → 분석용 별도 시스템 필수
+
+질문 3: ...
+
+Full details: [debate_20260120_073812.json](debate_20260120_073812.json)
