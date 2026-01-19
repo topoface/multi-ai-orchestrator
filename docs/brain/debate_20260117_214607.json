@@ -1,0 +1,37 @@
+{
+  "topic": "Python vs JavaScript",
+  "timestamp": "2026-01-17T12:46:07.403688",
+  "rounds": 2,
+  "consensus_score": 0.04848484848484849,
+  "status": "review_required",
+  "history": [
+    {
+      "round": 1,
+      "ai": "Claude",
+      "response": "Error getting Claude response: \"Could not resolve authentication method. Expected either api_key or auth_token to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted\""
+    },
+    {
+      "round": 1,
+      "ai": "Gemini",
+      "response": "Error getting Gemini response: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information."
+    },
+    {
+      "round": 2,
+      "ai": "Gemini",
+      "response": "Error getting Gemini response: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information."
+    },
+    {
+      "round": 2,
+      "ai": "Claude",
+      "response": "Error getting Claude response: \"Could not resolve authentication method. Expected either api_key or auth_token to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted\""
+    },
+    {
+      "round": "final",
+      "ai": "Perplexity",
+      "response": "Perplexity not available"
+    }
+  ],
+  "claude_final_position": "Error getting Claude response: \"Could not resolve authentication method. Expected either api_key or auth_token to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted\"",
+  "gemini_final_position": "Error getting Gemini response: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.",
+  "perplexity_judgment": "Perplexity not available"
+}

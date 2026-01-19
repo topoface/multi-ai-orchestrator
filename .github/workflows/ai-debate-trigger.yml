@@ -1,0 +1,151 @@
+name: AI Debate Trigger
+
+on:
+  issues:
+    types: [opened, labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to trigger debate'
+        required: true
+        type: number
+
+jobs:
+  check-debate-label:
+    name: Check if debate should be triggered
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+      issue_number: ${{ steps.check.outputs.issue_number }}
+    steps:
+      - name: Check for debate trigger
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "issue_number=${{ inputs.issue_number }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "issues" ]; then
+            TITLE="${{ github.event.issue.title }}"
+            LABELS="${{ join(github.event.issue.labels.*.name, ',') }}"
+
+            if [[ "$TITLE" == *"[Debate]"* ]] || [[ "$LABELS" == *"ai-debate"* ]]; then
+              echo "should_run=true" >> $GITHUB_OUTPUT
+              echo "issue_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+            else
+              echo "should_run=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "should_run=false" >> $GITHUB_OUTPUT
+          fi
+
+  run-debate:
+    name: Run Multi-AI Debate
+    runs-on: ubuntu-latest
+    needs: check-debate-label
+    if: needs.check-debate-label.outputs.should_run == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Get issue details
+        id: issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE_NUMBER="${{ needs.check-debate-label.outputs.issue_number }}"
+          ISSUE_BODY=$(gh issue view $ISSUE_NUMBER --json body --jq '.body')
+          ISSUE_TITLE=$(gh issue view $ISSUE_NUMBER --json title --jq '.title')
+
+          # Remove [Debate] prefix if present
+          TOPIC=$(echo "$ISSUE_TITLE" | sed 's/\[Debate\] *//')
+
+          echo "topic=$TOPIC" >> $GITHUB_OUTPUT
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$ISSUE_BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Run Multi-AI Debate
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/sa-key.json
+          GCP_PROJECT_ID: phsysics
+        run: |
+          # Create service account key file
+          echo '${{ secrets.GCP_SA_KEY }}' > sa-key.json
+
+          # Run debate
+          python .github/scripts/multi_ai_runner.py \
+            --topic "${{ steps.issue.outputs.topic }}" \
+            --issue-number ${{ needs.check-debate-label.outputs.issue_number }} \
+            --max-rounds 4
+
+      - name: Commit results
+        if: always()
+        run: |
+          git config user.name "Multi-AI Bot"
+          git config user.email "bot@multi-ai-orchestrator"
+
+          git add docs/brain/
+          git diff --staged --quiet || git commit -m "chore: Add debate results for issue #${{ needs.check-debate-label.outputs.issue_number }}"
+
+      - name: Push changes
+        if: always()
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}
+
+      - name: Post results to issue
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE_NUMBER="${{ needs.check-debate-label.outputs.issue_number }}"
+
+          # Find latest debate result
+          LATEST_DEBATE=$(ls -t docs/brain/debate_*.json 2>/dev/null | head -n1)
+
+          if [ -n "$LATEST_DEBATE" ]; then
+            python .github/scripts/post_debate_comment.py \
+              --issue $ISSUE_NUMBER \
+              --result-file "$LATEST_DEBATE"
+          else
+            gh issue comment $ISSUE_NUMBER --body "⚠️ Debate completed but results file not found."
+          fi
+
+      - name: Close issue if consensus reached
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE_NUMBER="${{ needs.check-debate-label.outputs.issue_number }}"
+          LATEST_DEBATE=$(ls -t docs/brain/debate_*.json 2>/dev/null | head -n1)
+
+          if [ -n "$LATEST_DEBATE" ]; then
+            CONSENSUS=$(python -c "import json; print(json.load(open('$LATEST_DEBATE'))['consensus_score'])")
+
+            if (( $(echo "$CONSENSUS >= 0.85" | bc -l) )); then
+              gh issue close $ISSUE_NUMBER --comment "🎉 Consensus reached (${CONSENSUS}%). Closing issue."
+            fi
+          fi

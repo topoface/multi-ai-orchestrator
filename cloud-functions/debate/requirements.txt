@@ -1,0 +1,4 @@
+functions-framework==3.*
+anthropic==0.18.0
+google-cloud-aiplatform>=1.38.0
+flask==3.0.0

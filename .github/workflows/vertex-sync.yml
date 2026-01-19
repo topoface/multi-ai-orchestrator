@@ -1,0 +1,98 @@
+name: Vertex AI Sync
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/brain/**'
+  workflow_dispatch:
+
+jobs:
+  sync-to-vertex:
+    name: Sync docs/brain/ to Vertex AI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Need previous commit for diff
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Get changed files
+        id: changed-files
+        run: |
+          # Get list of changed files in docs/brain/
+          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD -- docs/brain/ | grep '\.md$' || echo "")
+
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No markdown files changed in docs/brain/"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "Changed files:"
+            echo "$CHANGED_FILES"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+
+            # Save to file for next step
+            echo "$CHANGED_FILES" > changed_files.txt
+          fi
+
+      - name: Sync to Vertex AI
+        if: steps.changed-files.outputs.has_changes == 'true'
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/sa-key.json
+          GCP_PROJECT_ID: phsysics
+        run: |
+          # Create service account key file
+          echo '${{ secrets.GCP_SA_KEY }}' > sa-key.json
+
+          # Read changed files
+          while IFS= read -r file; do
+            if [ -f "$file" ]; then
+              echo "Processing: $file"
+
+              # Use vertex-learner to embed and store
+              python .claude/agents/vertex-learner/vertex_learner.py \
+                learn-file \
+                --file "$file" \
+                --metadata "{\"source\":\"github-actions\",\"commit\":\"${{ github.sha }}\",\"branch\":\"${{ github.ref_name }}\"}"
+            fi
+          done < changed_files.txt
+
+      - name: Verify sync
+        if: steps.changed-files.outputs.has_changes == 'true'
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/sa-key.json
+        run: |
+          # Create service account key file
+          echo '${{ secrets.GCP_SA_KEY }}' > sa-key.json
+
+          # Check quality metrics
+          python .claude/agents/vertex-learner/vertex_learner.py monitor-quality
+
+      - name: Report sync status
+        if: always()
+        run: |
+          if [ "${{ steps.changed-files.outputs.has_changes }}" == "true" ]; then
+            echo "✅ Sync completed for commit ${{ github.sha }}"
+          else
+            echo "ℹ️ No files to sync"
+          fi

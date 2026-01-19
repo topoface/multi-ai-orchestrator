@@ -1,0 +1,33 @@
+debate:
+  max_rounds: 4
+  round_timeout: 300  # 5 minutes in seconds
+  consensus_threshold: 0.85
+  expert_threshold: 0.70  # Trigger Perplexity if below this
+
+participants:
+  claude:
+    model: claude-sonnet-4-5-20250929
+    temperature: 0.7
+    max_tokens: 4096
+
+  gemini:
+    model: gemini-2.0-flash-exp
+    temperature: 0.7
+    max_tokens: 4096
+
+  perplexity:
+    model: llama-3.1-sonar-large-128k-online
+    temperature: 0.5
+    max_tokens: 2048
+    enabled: true
+
+agreement_scoring:
+  embedding_weight: 0.6
+  keyword_weight: 0.4
+  min_keywords: 3
+
+output:
+  save_to_github: true
+  save_to_vertex: true
+  create_pr: false  # Set to true to auto-create PRs
+  close_issue: true  # Auto-close issue if consensus > threshold

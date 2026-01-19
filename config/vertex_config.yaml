@@ -1,0 +1,24 @@
+project_id: phsysics
+location: us-central1
+
+bigquery:
+  dataset: my_physics_agent_stackoverflow_data
+  table: questions_embeddings
+  knowledge_dataset: knowledge_base
+  knowledge_table: embeddings
+
+gcs:
+  bucket: multi-ai-memory-bank-phsysics
+  folders:
+    context: context/
+    decisions: decisions/
+    session_logs: session_logs/
+
+embedding:
+  model: textembedding-gecko@003
+  dimensions: 768
+  batch_size: 100
+
+search:
+  similarity_threshold: 0.7
+  max_results: 10
