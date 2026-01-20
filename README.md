@@ -23,17 +23,20 @@ Vertex AI Learning + GitHub Commit (History)
 ## Components
 
 ### Skills
+
 - `vertex-search`: Search knowledge from Vertex AI RAG (BigQuery + GCS)
 - `github-sync`: Bidirectional sync between GitHub and Vertex AI
 - `debate-request`: Initiate Multi-AI debates
 - `decision-logger`: Automatically log important decisions
 
 ### Subagents
+
 - `github-orchestrator`: Manages GitHub Issues/PRs/Actions
 - `debate-manager`: Orchestrates Multi-AI debate process
 - `vertex-learner`: Learns and manages Vertex AI knowledge
 
 ### Hooks
+
 - `sync-to-vertex`: Auto-sync file changes to Vertex AI (PostToolUse)
 - `trigger-debate`: Auto-detect debate keywords (UserPromptSubmit)
 - `save-debate-result`: Save session logs to Vertex AI (Stop)
@@ -50,48 +53,67 @@ Vertex AI Learning + GitHub Commit (History)
 ## Usage
 
 ### Start a debate via Claude Code
+
 ```bash
 /debate "What's the best RTL multiplication optimization?"
 ```
 
 ### Search Vertex AI knowledge
+
 ```bash
 /vertex-search NoiseComputer multiplication rules
 ```
 
 ### Sync to Vertex AI
+
 ```bash
 /github-sync
 ```
 
 ### Via GitHub Issues
+
 Create an issue with title `[Debate] Your question` or label `ai-debate`
 
 ## Architecture Details
 
 ### Knowledge Storage
+
 - **BigQuery**: `phsysics.my_physics_agent_stackoverflow_data.questions_embeddings` (4,362 embeddings)
 - **GCS**: `gs://multi-ai-memory-bank-phsysics/` (context/, decisions/, session_logs/)
 
-### Debate Protocol
-1. **Round 1**: Claude proposal → Gemini review
-2. **Round 2**: Gemini alternative → Claude rebuttal
-3. **Round 3**: Both sides compromise → Calculate consensus
-4. **Round 4**: Perplexity judgment (if consensus < 70%)
+### Discussion Protocol (Collaborative, Not Adversarial)
+
+**Philosophy**: AI experts trained on similar data naturally converge. No forced opposition.
+
+1. **Round 1-10**: Pure technical discussion
+   - Claude: "What's your understanding of {topic}?"
+   - Gemini: "Your thoughts on the discussion?"
+   - Natural exchange without forced structure
+
+2. **Mid-Discussion Check (Round 5)**:
+   - If consensus < 70% → Auto-call Perplexity for expert perspective
+   - AIs continue discussing with Perplexity's insights
+
+3. **Dynamic Expert Mediation**:
+   - Either AI can request Perplexity via `[REQUEST_EXPERT]` signal
+   - If both request → Immediate expert judgment
 
 ### Consensus Criteria
-- **≥85%**: Auto-adopt
-- **70-85%**: User review required
-- **<70%**: Extend debate or call Perplexity
+
+- **≥85%**: Auto-adopt (high natural agreement)
+- **70-85%**: User review (moderate agreement)
+- **<70%**: Genuine disagreement → Perplexity mediation
 
 ## Cost Estimate
 
 **Subscriptions (existing)**: $60/month
+
 - Gemini Advanced: $20
 - Claude Pro: $20
 - Perplexity Pro: $20
 
 **Infrastructure (additional)**: $0.22/month
+
 - Vertex AI RAG: $0.22 (100MB data)
 
 **Total**: $60.22/month (~84,300 KRW)

@@ -1,51 +1,50 @@
 # 🔍 동작 원리 상세 설명
 
-## 🎯 전체 흐름도
+## 🎯 전체 흐름도 (협력적 토론 시스템)
 
 ```
 사용자 질문: "RTL 곱셈을 어떻게 최적화하지?"
         ↓
 ┌───────────────────────────────────────────────────┐
 │ 1️⃣ 토론 시작 (debate_engine.py)                    │
+│   최대 10 라운드 협력적 토론                         │
 └───────────────────────────────────────────────────┘
         ↓
 ┌───────────────────────────────────────────────────┐
-│ Round 1: Claude 제안                               │
-│   → Anthropic API 호출                             │
-│   → "방법 A: 파이프라인 최적화"                      │
+│ Round 1: Claude 의견 공유                          │
+│   → "제 이해로는 파이프라인 최적화가..."             │
 └───────────────────────────────────────────────────┘
         ↓
 ┌───────────────────────────────────────────────────┐
-│ Round 1: Gemini 검토                               │
-│   → Gemini API 호출                                │
-│   → "방법 B: 병렬 처리가 더 나음"                    │
+│ Round 1: Gemini 의견 공유                          │
+│   → "동의합니다. 추가로 병렬 처리도..."              │
 └───────────────────────────────────────────────────┘
         ↓
 ┌───────────────────────────────────────────────────┐
-│ 합의도 계산                                         │
-│   → 키워드 유사도: 40%                              │
-│   → 의미론적 유사도: 50% (임베딩)                    │
-│   → 최종: 45% (계속 토론)                           │
+│ 합의도 계산 (키워드 유사도)                          │
+│   → 82% - 높은 자연적 합의!                         │
 └───────────────────────────────────────────────────┘
         ↓
 ┌───────────────────────────────────────────────────┐
-│ Round 2: 반복...                                   │
-│   → 합의도 72%                                     │
+│ Round 2-4: 세부 사항 논의                          │
+│   → "이 접근법의 구체적 구현은..."                   │
+│   → 합의도 계속 상승 → 90%                          │
 └───────────────────────────────────────────────────┘
         ↓
 ┌───────────────────────────────────────────────────┐
-│ Round 3: 절충안                                    │
-│   → 합의도 88% ✓ (85% 이상!)                       │
+│ ✅ 합의 도달! (85% 이상)                           │
+│   (필요시) Round 5: Perplexity 자동 호출            │
+│   - 합의도 < 70%일 때만                            │
 └───────────────────────────────────────────────────┘
         ↓
 ┌───────────────────────────────────────────────────┐
-│ 2️⃣ 결과 저장 (decision_logger.py)                  │
+│ 2️⃣ 결과 저장                                       │
 │   → docs/brain/DECISIONS.md 업데이트                │
-│   → debate_20250117_210530.json 생성               │
+│   → debate_20260120_HHMMSS.json 생성               │
 └───────────────────────────────────────────────────┘
         ↓
 ┌───────────────────────────────────────────────────┐
-│ 3️⃣ Vertex AI 동기화 (vertex_learner.py)            │
+│ 3️⃣ Vertex AI 동기화 (향후 구현)                    │
 │   → 텍스트 → 임베딩 (768차원 벡터)                  │
 │   → BigQuery 저장 (검색용)                          │
 │   → GCS 백업 (원본 보관)                            │
@@ -63,6 +62,7 @@
 **파일**: `.claude/skills/debate-request/debate_engine.py`
 
 **하는 일**:
+
 ```python
 # 1. Claude API 호출
 claude_response = anthropic.messages.create(
@@ -94,6 +94,7 @@ save_result({
 **파일**: `.claude/agents/vertex-learner/vertex_learner.py`
 
 **하는 일**:
+
 ```python
 # 1. 텍스트를 읽음
 text = "RTL 곱셈 최적화는 파이프라인 기법을..."
@@ -114,6 +115,7 @@ gcs.upload(text, "decisions/decision_20250117.txt")
 ```
 
 **왜 이렇게?**
+
 - BigQuery: 임베딩으로 **의미론적 검색** 가능
 - GCS: 원본 텍스트 **영구 보관**
 
@@ -124,6 +126,7 @@ gcs.upload(text, "decisions/decision_20250117.txt")
 **파일**: `.claude/skills/github-sync/sync_manager.py`
 
 **GitHub → Vertex AI**:
+
 ```python
 # 1. 변경된 파일 찾기
 changed_files = git_diff("docs/brain/")
@@ -138,6 +141,7 @@ for file in changed_files:
 ```
 
 **Vertex AI → GitHub**:
+
 ```python
 # 1. GCS에서 최신 결정 가져오기
 latest_decisions = gcs.list("decisions/", limit=5)
@@ -157,6 +161,7 @@ git_commit("Update decisions from Vertex AI")
 **파일**: `.github/workflows/ai-debate-trigger.yml`
 
 **Issue 생성 시 자동 실행**:
+
 ```yaml
 on:
   issues:
@@ -301,14 +306,14 @@ GCS 백업
 
 ```yaml
 debate:
-  max_rounds: 4              # 최대 4라운드
-  consensus_threshold: 0.85  # 85% 이상이면 자동 채택
-  expert_threshold: 0.70     # 70% 미만이면 Perplexity 호출
+  max_rounds: 10 # 최대 10라운드 (협력적 토론)
+  consensus_threshold: 0.85 # 85% 이상이면 자동 채택
+  expert_threshold: 0.70 # 70% 미만이면 Round 5에서 Perplexity 호출
 
 participants:
   claude:
-    model: claude-sonnet-4-5-20250929
-    temperature: 0.7         # 창의성 (0=확정적, 1=창의적)
+    model: claude-sonnet-4-5-20250929 # 최신 Sonnet 4.5
+    temperature: 0.7 # 창의성 (0=확정적, 1=창의적)
     max_tokens: 4096
 
   gemini:
@@ -318,12 +323,12 @@ participants:
 
   perplexity:
     model: llama-3.1-sonar-large-128k-online
-    temperature: 0.5         # 전문가는 더 확정적
+    temperature: 0.5 # 전문가는 더 확정적
     enabled: true
 
 agreement_scoring:
-  embedding_weight: 0.6      # 의미론적 유사도 가중치
-  keyword_weight: 0.4        # 키워드 유사도 가중치
+  method: jaccard # 키워드 기반 Jaccard 유사도
+  # 향후: 임베딩 기반 코사인 유사도 추가 가능
 ```
 
 ---
@@ -349,12 +354,12 @@ gcs:
 
 embedding:
   model: textembedding-gecko@003
-  dimensions: 768            # 임베딩 벡터 크기
-  batch_size: 100           # 한 번에 100개씩 처리
+  dimensions: 768 # 임베딩 벡터 크기
+  batch_size: 100 # 한 번에 100개씩 처리
 
 search:
-  similarity_threshold: 0.7  # 최소 유사도 70%
-  max_results: 10           # 최대 10개 결과
+  similarity_threshold: 0.7 # 최소 유사도 70%
+  max_results: 10 # 최대 10개 결과
 ```
 
 ---
@@ -362,6 +367,7 @@ search:
 ## 🚀 실행 흐름 요약
 
 ### 로컬 실행
+
 ```bash
 python scripts/auto-debate.py "주제"
    ↓
@@ -375,6 +381,7 @@ Claude ↔ Gemini 토론
 ```
 
 ### GitHub 실행
+
 ```bash
 Issue 생성 "[Debate] 주제"
    ↓
@@ -408,26 +415,30 @@ Vertex AI 동기화
 ## 🔧 커스터마이징
 
 ### 토론 라운드 변경
+
 ```yaml
 # config/debate_config.yaml
-max_rounds: 2  # 빠른 토론
+max_rounds: 2 # 빠른 토론
 ```
 
 ### 합의 기준 변경
+
 ```yaml
-consensus_threshold: 0.90  # 90% 이상 요구
+consensus_threshold: 0.90 # 90% 이상 요구
 ```
 
 ### 모델 변경
+
 ```yaml
 participants:
   claude:
-    model: claude-opus-4-5  # 더 강력한 모델
+    model: claude-opus-4-5 # 더 강력한 모델
 ```
 
 ### 검색 정확도 조정
+
 ```yaml
 search:
-  similarity_threshold: 0.8  # 80% 이상만
-  max_results: 20           # 더 많은 결과
+  similarity_threshold: 0.8 # 80% 이상만
+  max_results: 20 # 더 많은 결과
 ```
