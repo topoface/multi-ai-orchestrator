@@ -1,5 +1,5 @@
 debate:
-  max_rounds: 4
+  max_rounds: 10
   round_timeout: 300  # 5 minutes in seconds
   consensus_threshold: 0.85
   expert_threshold: 0.70  # Trigger Perplexity if below this
