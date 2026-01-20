@@ -49,12 +49,12 @@ def main():
 
         print("\n✅ Debate completed successfully")
 
-        # Exit with 0 if consensus reached, 1 if review needed
-        if result['consensus_score'] >= 0.85:
-            sys.exit(0)
-        else:
+        # Always exit 0 - debate completion is success
+        # Consensus status is handled in issue comments
+        if result['consensus_score'] < 0.85:
             print("⚠️ Consensus not reached - manual review required")
-            sys.exit(1)
+
+        sys.exit(0)
 
     except Exception as e:
         print(f"\n❌ Debate failed: {e}", file=sys.stderr)
