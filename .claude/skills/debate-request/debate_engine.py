@@ -252,6 +252,38 @@ Be objective and focus on technical merits."""
                 context += f"\n\nGemini (Round {round_num}):\n{gemini_response}"
                 gemini_final = gemini_response
 
+            else:
+                # Round 4+: Continue debate, push for consensus
+                print(f"Round {round_num}: Deepening discussion...", file=sys.stderr)
+
+                # Alternate who goes first to balance the debate
+                if round_num % 2 == 0:
+                    # Claude first
+                    prompt = f"We're at round {round_num}. Review the entire discussion and either: 1) Find common ground with Gemini's position, or 2) Present new compelling evidence for your stance. Focus on convergence."
+                    claude_response = self.get_claude_response(prompt, context)
+                    self.history.append({"round": round_num, "ai": "Claude", "response": claude_response})
+                    context += f"\n\nClaude (Round {round_num}):\n{claude_response}"
+                    claude_final = claude_response
+
+                    prompt = f"Respond to Claude's latest points. Can you find areas of agreement? If not, what critical differences remain?"
+                    gemini_response = self.get_gemini_response(prompt, context)
+                    self.history.append({"round": round_num, "ai": "Gemini", "response": gemini_response})
+                    context += f"\n\nGemini (Round {round_num}):\n{gemini_response}"
+                    gemini_final = gemini_response
+                else:
+                    # Gemini first
+                    prompt = f"We're at round {round_num}. Review the entire discussion and either: 1) Find common ground with Claude's position, or 2) Present new compelling evidence for your stance. Focus on convergence."
+                    gemini_response = self.get_gemini_response(prompt, context)
+                    self.history.append({"round": round_num, "ai": "Gemini", "response": gemini_response})
+                    context += f"\n\nGemini (Round {round_num}):\n{gemini_response}"
+                    gemini_final = gemini_response
+
+                    prompt = f"Respond to Gemini's latest points. Can you find areas of agreement? If not, what critical differences remain?"
+                    claude_response = self.get_claude_response(prompt, context)
+                    self.history.append({"round": round_num, "ai": "Claude", "response": claude_response})
+                    context += f"\n\nClaude (Round {round_num}):\n{claude_response}"
+                    claude_final = claude_response
+
             # Calculate consensus
             consensus = self.calculate_consensus(claude_final, gemini_final)
             print(f"Consensus score: {consensus:.2%}\n", file=sys.stderr)
