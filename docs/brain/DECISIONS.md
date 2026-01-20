@@ -209,3 +209,14 @@ Full details: [debate_20260120_021137.json](debate_20260120_021137.json)
 Error getting Claude response: "Could not resolve authentication method. Expected either api_key or auth_token to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted"...
 
 Full details: [debate_20260120_021819.json](debate_20260120_021819.json)
+
+
+## Decision: Python 비동기 vs 멀티스레딩
+**Date**: 2026-01-20T02:24:02.108519
+**Consensus**: 0.23%
+**Status**: review_required
+
+**Final Decision**:
+Error getting Claude response: "Could not resolve authentication method. Expected either api_key or auth_token to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted"...
+
+Full details: [debate_20260120_022403.json](debate_20260120_022403.json)
