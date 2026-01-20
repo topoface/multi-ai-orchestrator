@@ -100,7 +100,7 @@ jobs:
           python .github/scripts/multi_ai_runner.py \
             --topic "${{ steps.issue.outputs.topic }}" \
             --issue-number ${{ needs.check-debate-label.outputs.issue_number }} \
-            --max-rounds 4
+            --max-rounds 10
 
       - name: Commit and push results
         if: always()
