@@ -446,3 +446,19 @@ If consensus is consistently high:
 - `docs/brain/debate_*.json` - Historical evidence of failure
 
 ---
+
+
+## Decision: Vim vs Emacs - 어느 것이 더 나은가?
+**Date**: 2026-01-20T04:01:51.630326
+**Consensus**: 4.86%
+**Status**: expert_mediation
+
+**Final Decision**:
+POSITION: The discussion has effectively evolved from a binary comparison to a more nuanced framework: Vim and Emacs represent different philosophies of tool optimization versus environment customization, with the optimal choice depending on whether a user prioritizes specialized efficiency or integrated extensibility.
+
+REASONING: The progression across the three rounds shows increasingly sophisticated analysis:
+
+**What the discussion got right:**
+- The fundamental insight that this isn't about ...
+
+Full details: [debate_20260120_040152.json](debate_20260120_040152.json)
