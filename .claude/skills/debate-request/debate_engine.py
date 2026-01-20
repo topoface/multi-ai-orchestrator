@@ -13,7 +13,6 @@ from datetime import datetime
 import anthropic
 import google.generativeai as genai
 import requests
-import numpy as np
 from dotenv import load_dotenv
 
 # Supabase client (optional, only if configured)
