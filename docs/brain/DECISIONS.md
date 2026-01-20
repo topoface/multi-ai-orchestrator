@@ -165,3 +165,14 @@ Full details: [debate_20260117_215618.json](debate_20260117_215618.json)
 질문 3: ...
 
 Full details: [debate_20260120_073812.json](debate_20260120_073812.json)
+
+
+## Decision: Python 비동기 vs 멀티스레딩
+**Date**: 2026-01-20T01:56:58.098321
+**Consensus**: 0.41%
+**Status**: review_required
+
+**Final Decision**:
+Error getting Claude response: "Could not resolve authentication method. Expected either api_key or auth_token to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted"...
+
+Full details: [debate_20260120_015659.json](debate_20260120_015659.json)
