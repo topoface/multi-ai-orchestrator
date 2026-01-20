@@ -211,40 +211,40 @@ Be objective and focus on technical merits."""
             if round_num == 1:
                 # Round 1: Claude proposes
                 print("Claude proposing...", file=sys.stderr)
-                prompt = f"Propose a solution or approach for: {self.topic}"
+                prompt = f"Analyze this topic and propose your best understanding: {self.topic}"
                 claude_response = self.get_claude_response(prompt, context)
                 self.history.append({"round": round_num, "ai": "Claude", "response": claude_response})
                 context += f"\n\nClaude (Round {round_num}):\n{claude_response}"
                 claude_final = claude_response
 
                 # Gemini reviews
-                print("Gemini reviewing...", file=sys.stderr)
-                prompt = f"Review Claude's proposal and provide your analysis. Do you agree? What alternatives exist?"
+                print("Gemini analyzing...", file=sys.stderr)
+                prompt = f"Review Claude's analysis. Where do you agree? What insights can you add to build upon their points?"
                 gemini_response = self.get_gemini_response(prompt, context)
                 self.history.append({"round": round_num, "ai": "Gemini", "response": gemini_response})
                 context += f"\n\nGemini (Round {round_num}):\n{gemini_response}"
                 gemini_final = gemini_response
 
             elif round_num == 2:
-                # Round 2: Gemini alternative, Claude rebuts
-                print("Gemini proposing alternative...", file=sys.stderr)
-                prompt = f"Based on the discussion, propose your alternative or refined approach."
+                # Round 2: Collaborative refinement
+                print("Gemini refining...", file=sys.stderr)
+                prompt = f"Based on our discussion, how can we refine our understanding? What additional perspectives strengthen our analysis?"
                 gemini_response = self.get_gemini_response(prompt, context)
                 self.history.append({"round": round_num, "ai": "Gemini", "response": gemini_response})
                 context += f"\n\nGemini (Round {round_num}):\n{gemini_response}"
                 gemini_final = gemini_response
 
-                print("Claude rebutting...", file=sys.stderr)
-                prompt = f"Respond to Gemini's alternative. What are the merits and drawbacks?"
+                print("Claude collaborating...", file=sys.stderr)
+                prompt = f"Respond to Gemini's insights. How can we integrate our perspectives into a more complete understanding?"
                 claude_response = self.get_claude_response(prompt, context)
                 self.history.append({"round": round_num, "ai": "Claude", "response": claude_response})
                 context += f"\n\nClaude (Round {round_num}):\n{claude_response}"
                 claude_final = claude_response
 
             elif round_num == 3:
-                # Round 3: Compromise
-                print("Seeking compromise...", file=sys.stderr)
-                prompt = f"Given the discussion, what's a reasonable compromise or synthesis of ideas?"
+                # Round 3: Synthesis
+                print("Synthesizing...", file=sys.stderr)
+                prompt = f"Given our collaborative discussion, what's the most comprehensive and accurate understanding we can reach together?"
 
                 claude_response = self.get_claude_response(prompt, context)
                 self.history.append({"round": round_num, "ai": "Claude", "response": claude_response})
@@ -267,18 +267,18 @@ Be objective and focus on technical merits."""
                 if round_num % 2 == 0:
                     # Claude first
                     if has_perplexity and round_num >= 6:
-                        prompt = f"We're at round {round_num}. Perplexity has provided expert judgment. Consider their perspective and either: 1) Align with Perplexity's recommendation and find common ground with Gemini, or 2) Explain why a different approach is better. Focus on reaching consensus."
+                        prompt = f"We're at round {round_num}. Perplexity has provided expert judgment. Build upon their insights and Gemini's points to strengthen our collective understanding."
                     else:
-                        prompt = f"We're at round {round_num}. Review the entire discussion and either: 1) Find common ground with Gemini's position, or 2) Present new compelling evidence for your stance. Focus on convergence."
+                        prompt = f"We're at round {round_num}. Building on our discussion, how can we integrate our insights into a unified, comprehensive understanding?"
                     claude_response = self.get_claude_response(prompt, context)
                     self.history.append({"round": round_num, "ai": "Claude", "response": claude_response})
                     context += f"\n\nClaude (Round {round_num}):\n{claude_response}"
                     claude_final = claude_response
 
                     if has_perplexity and round_num >= 6:
-                        prompt = f"Respond to Claude's points, considering Perplexity's expert judgment. Can you find areas of agreement based on the expert guidance?"
+                        prompt = f"Build upon Claude's analysis and Perplexity's guidance. How can we strengthen our collective understanding?"
                     else:
-                        prompt = f"Respond to Claude's latest points. Can you find areas of agreement? If not, what critical differences remain?"
+                        prompt = f"Build upon Claude's insights. What can you add to create a more complete picture?"
                     gemini_response = self.get_gemini_response(prompt, context)
                     self.history.append({"round": round_num, "ai": "Gemini", "response": gemini_response})
                     context += f"\n\nGemini (Round {round_num}):\n{gemini_response}"
@@ -286,18 +286,18 @@ Be objective and focus on technical merits."""
                 else:
                     # Gemini first
                     if has_perplexity and round_num >= 6:
-                        prompt = f"We're at round {round_num}. Perplexity has provided expert judgment. Consider their perspective and either: 1) Align with Perplexity's recommendation and find common ground with Claude, or 2) Explain why a different approach is better. Focus on reaching consensus."
+                        prompt = f"We're at round {round_num}. Perplexity has provided expert judgment. Build upon their insights and Claude's points to strengthen our collective understanding."
                     else:
-                        prompt = f"We're at round {round_num}. Review the entire discussion and either: 1) Find common ground with Claude's position, or 2) Present new compelling evidence for your stance. Focus on convergence."
+                        prompt = f"We're at round {round_num}. Building on our discussion, how can we integrate our insights into a unified, comprehensive understanding?"
                     gemini_response = self.get_gemini_response(prompt, context)
                     self.history.append({"round": round_num, "ai": "Gemini", "response": gemini_response})
                     context += f"\n\nGemini (Round {round_num}):\n{gemini_response}"
                     gemini_final = gemini_response
 
                     if has_perplexity and round_num >= 6:
-                        prompt = f"Respond to Gemini's points, considering Perplexity's expert judgment. Can you find areas of agreement based on the expert guidance?"
+                        prompt = f"Build upon Gemini's analysis and Perplexity's guidance. How can we strengthen our collective understanding?"
                     else:
-                        prompt = f"Respond to Gemini's latest points. Can you find areas of agreement? If not, what critical differences remain?"
+                        prompt = f"Build upon Gemini's insights. What can you add to create a more complete picture?"
                     claude_response = self.get_claude_response(prompt, context)
                     self.history.append({"round": round_num, "ai": "Claude", "response": claude_response})
                     context += f"\n\nClaude (Round {round_num}):\n{claude_response}"
