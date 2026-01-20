@@ -12,6 +12,11 @@ on:
         required: true
         type: number
 
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
 jobs:
   check-debate-label:
     name: Check if debate should be triggered
@@ -92,26 +97,23 @@ jobs:
             --issue-number ${{ needs.check-debate-label.outputs.issue_number }} \
             --max-rounds 4
 
-      - name: Commit results
+      - name: Commit and push results
         if: always()
         run: |
           git config user.name "Multi-AI Bot"
           git config user.email "bot@multi-ai-orchestrator"
 
           git add docs/brain/
-          git diff --staged --quiet || git commit -m "chore: Add debate results for issue #${{ needs.check-debate-label.outputs.issue_number }}"
-
-      - name: Push changes
-        if: always()
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ github.ref }}
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: Add debate results for issue #${{ needs.check-debate-label.outputs.issue_number }}"
+            git push
+          fi
 
       - name: Post results to issue
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           ISSUE_NUMBER="${{ needs.check-debate-label.outputs.issue_number }}"
 
