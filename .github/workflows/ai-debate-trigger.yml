@@ -91,6 +91,11 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
+          # Debug: Check if API keys are set
+          echo "ANTHROPIC_API_KEY present: $([ -n "$ANTHROPIC_API_KEY" ] && echo 'YES' || echo 'NO')"
+          echo "ANTHROPIC_API_KEY starts with: ${ANTHROPIC_API_KEY:0:10}..."
+          echo "GEMINI_API_KEY present: $([ -n "$GEMINI_API_KEY" ] && echo 'YES' || echo 'NO')"
+
           # Run debate
           python .github/scripts/multi_ai_runner.py \
             --topic "${{ steps.issue.outputs.topic }}" \
