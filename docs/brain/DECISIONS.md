@@ -247,3 +247,28 @@ This synthesis acknowledges that both "decide upfront" and "iterate blindly" are
 ### Phase 1: Quick Assessment (Risk-Aware Tria...
 
 Full details: [debate_20260120_024200.json](debate_20260120_024200.json)
+
+
+## Decision: Python 비동기 vs 멀티스레딩
+**Date**: 2026-01-20T02:51:01.743481
+**Consensus**: 3.43%
+**Status**: review_required
+
+**Final Decision**:
+# Synthesis: Pragmatic Concurrency Decision Framework
+
+## UNIFIED POSITION
+The optimal approach combines **heuristic-driven defaults** (Claude) with **selective empirical validation** (Gemini), creating a **risk-stratified decision framework** that balances speed-to-market with technical rigor.
+
+---
+
+## THREE-TIER DECISION FRAMEWORK
+
+### **Tier 1: Heuristic Fast-Path (80% of cases)**
+*Time investment: 1-2 hours*
+
+```python
+# Decision tree for common scenarios
+def quick_decision(project_character...
+
+Full details: [debate_20260120_025102.json](debate_20260120_025102.json)
