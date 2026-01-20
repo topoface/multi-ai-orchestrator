@@ -114,6 +114,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           ISSUE_NUMBER="${{ needs.check-debate-label.outputs.issue_number }}"
 

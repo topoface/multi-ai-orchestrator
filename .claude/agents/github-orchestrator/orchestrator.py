@@ -12,7 +12,8 @@ from typing import Dict, Any, Optional
 from github import Github, GithubException
 
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
-GITHUB_REPO = os.getenv('GITHUB_REPO', 'username/multi-ai-orchestrator')
+# GitHub Actions provides GITHUB_REPOSITORY automatically (e.g., 'owner/repo')
+GITHUB_REPO = os.getenv('GITHUB_REPOSITORY') or os.getenv('GITHUB_REPO', 'topoface/multi-ai-orchestrator')
 
 
 class GitHubOrchestrator:
