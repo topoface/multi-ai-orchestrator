@@ -3,6 +3,8 @@ name: AI Debate Trigger
 on:
   issues:
     types: [opened, labeled]
+  issue_comment:
+    types: [created]
   workflow_dispatch:
     inputs:
       issue_number:
@@ -24,7 +26,7 @@ jobs:
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "should_run=true" >> $GITHUB_OUTPUT
             echo "issue_number=${{ inputs.issue_number }}" >> $GITHUB_OUTPUT
-          elif [ "${{ github.event_name }}" == "issues" ]; then
+          elif [ "${{ github.event_name }}" == "issues" ] || [ "${{ github.event_name }}" == "issue_comment" ]; then
             TITLE="${{ github.event.issue.title }}"
             LABELS="${{ join(github.event.issue.labels.*.name, ',') }}"
 
