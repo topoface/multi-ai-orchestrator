@@ -78,6 +78,8 @@ Format your response as:
 POSITION: [Your main argument]
 REASONING: [Why you believe this]
 EVIDENCE: [Supporting facts or examples]
+
+IMPORTANT: If you believe this debate has reached a deadlock and needs a third-party expert (Perplexity) to provide judgment, add [REQUEST_EXPERT] at the very end of your response. Only do this if you genuinely think expert mediation would help reach consensus.
 """
 
         try:
@@ -108,6 +110,8 @@ Format your response as:
 POSITION: [Your main argument]
 REASONING: [Why you believe this]
 EVIDENCE: [Supporting facts or examples]
+
+IMPORTANT: If you believe this debate has reached a deadlock and needs a third-party expert (Perplexity) to provide judgment, add [REQUEST_EXPERT] at the very end of your response. Only do this if you genuinely think expert mediation would help reach consensus.
 """
 
         try:
@@ -283,6 +287,39 @@ Be objective and focus on technical merits."""
                     self.history.append({"round": round_num, "ai": "Claude", "response": claude_response})
                     context += f"\n\nClaude (Round {round_num}):\n{claude_response}"
                     claude_final = claude_response
+
+            # Check if both AIs request expert mediation
+            claude_requests_expert = '[REQUEST_EXPERT]' in claude_final
+            gemini_requests_expert = '[REQUEST_EXPERT]' in gemini_final
+
+            if claude_requests_expert and gemini_requests_expert:
+                print("🚨 Both AIs request expert mediation! Calling Perplexity...\n", file=sys.stderr)
+                perplexity_judgment = self.get_perplexity_judgment(claude_final, gemini_final)
+                self.history.append({"round": round_num, "ai": "Perplexity", "response": perplexity_judgment})
+                print("✓ Expert judgment received. Ending debate.\n", file=sys.stderr)
+
+                # Update finals and break
+                final_consensus = self.calculate_consensus(claude_final, gemini_final)
+                result = {
+                    "topic": self.topic,
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "rounds": len(self.history) // 2,
+                    "consensus_score": final_consensus,
+                    "status": "expert_mediation",
+                    "history": self.history,
+                    "claude_final_position": claude_final,
+                    "gemini_final_position": gemini_final,
+                    "perplexity_judgment": perplexity_judgment
+                }
+
+                # Save to Supabase (if available)
+                if self.supabase_client:
+                    self.save_to_supabase(result)
+
+                return result
+            elif claude_requests_expert or gemini_requests_expert:
+                requester = "Claude" if claude_requests_expert else "Gemini"
+                print(f"⚠️ {requester} requests expert, but not both. Continuing debate...\n", file=sys.stderr)
 
             # Calculate consensus
             consensus = self.calculate_consensus(claude_final, gemini_final)
