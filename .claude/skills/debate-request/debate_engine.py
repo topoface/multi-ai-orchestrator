@@ -358,11 +358,16 @@ Be objective and focus on technical merits."""
 
                     if consensus_reached:
                         print(f"✅ Explicit consensus reached ({consensus_status})! Ending discussion.\n", file=sys.stderr)
+
+                        # Calculate TF-IDF consensus score for reference
+                        consensus_score = self.calculate_consensus(claude_final, gemini_final)
+
                         result = {
                             "topic": self.topic,
                             "timestamp": datetime.utcnow().isoformat(),
                             "rounds": round_num,
                             "consensus_type": consensus_status,
+                            "consensus_score": consensus_score,  # TF-IDF score for reference
                             "claude_agreement": claude_agreement,
                             "gemini_agreement": gemini_agreement,
                             "status": "consensus",
@@ -459,7 +464,20 @@ def format_result(result: Dict[str, Any]) -> str:
         f"{'='*80}\n",
         f"Timestamp: {result['timestamp']}",
         f"Rounds: {result['rounds']}",
-        f"Consensus: {result['consensus_score']:.2%}",
+    ]
+
+    # Show explicit agreement if available
+    if 'consensus_type' in result:
+        output.extend([
+            f"Agreement Type: {result['consensus_type'].upper()}",
+            f"Claude: {result.get('claude_agreement', 'UNKNOWN')}",
+            f"Gemini: {result.get('gemini_agreement', 'UNKNOWN')}",
+            f"TF-IDF Score (reference): {result['consensus_score']:.2%}",
+        ])
+    else:
+        output.append(f"Consensus: {result['consensus_score']:.2%}")
+
+    output.extend([
         f"Status: {result['status'].upper()}\n",
         f"{'='*80}",
         "\n## CLAUDE'S FINAL POSITION\n",
@@ -467,9 +485,9 @@ def format_result(result: Dict[str, Any]) -> str:
         f"\n{'='*80}",
         "\n## GEMINI'S FINAL POSITION\n",
         result['gemini_final_position'],
-    ]
+    ])
 
-    if result['perplexity_judgment']:
+    if result.get('perplexity_judgment'):
         output.extend([
             f"\n{'='*80}",
             "\n## PERPLEXITY EXPERT JUDGMENT\n",
