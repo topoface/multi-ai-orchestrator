@@ -14,6 +14,7 @@ nano .env  # 여기에 API 키 입력
 ```
 
 **.env 파일 내용**:
+
 ```bash
 ANTHROPIC_API_KEY=sk-ant-xxxxx  # Claude API 키
 GEMINI_API_KEY=AIzaSyxxxxx      # Gemini API 키
@@ -32,6 +33,7 @@ python scripts/auto-debate.py "Python vs JavaScript for backend" --rounds 2
 ```
 
 **예상 출력**:
+
 ```
 🔥 Starting debate: Python vs JavaScript for backend
 
@@ -89,6 +91,7 @@ python .claude/skills/vertex-search/vertex_search.py "NoiseComputer 곱셈"
 ```
 
 **출력**:
+
 ```
 Found 3 results:
 
@@ -119,11 +122,13 @@ python scripts/vertex_github_bridge.py --from-vertex
 ## 🎯 3가지 사용 방법
 
 ### 방법 1: 커맨드라인 (가장 빠름)
+
 ```bash
 python scripts/auto-debate.py "주제"
 ```
 
 ### 방법 2: GitHub Issue (팀 협업)
+
 ```markdown
 Issue 생성:
 Title: [Debate] 인증 방식 선택
@@ -132,6 +137,7 @@ Labels: ai-debate
 ```
 
 ### 방법 3: Claude Code Skill (통합)
+
 ```bash
 # Claude Code에서
 /debate "주제"
@@ -149,16 +155,16 @@ Labels: ai-debate
 
 ```yaml
 debate:
-  max_rounds: 4              # 최대 라운드
-  consensus_threshold: 0.85  # 자동 채택 기준
-  expert_threshold: 0.70     # Perplexity 호출 기준
+  max_rounds: 4 # 최대 라운드
+  consensus_threshold: 0.85 # 자동 채택 기준
+  expert_threshold: 0.70 # Perplexity 호출 기준
 
 participants:
   claude:
     model: claude-sonnet-4-5-20250929
     temperature: 0.7
   gemini:
-    model: gemini-2.0-flash-exp
+    model: gemini-2.0-flash # Production model for paid tier
     temperature: 0.7
 ```
 
@@ -178,8 +184,8 @@ embedding:
   batch_size: 100
 
 search:
-  similarity_threshold: 0.7  # 최소 유사도
-  max_results: 10           # 최대 결과 수
+  similarity_threshold: 0.7 # 최소 유사도
+  max_results: 10 # 최대 결과 수
 ```
 
 ---
@@ -203,6 +209,7 @@ gh repo create multi-ai-orchestrator --public --source=. --push
 GitHub 웹사이트 → Settings → Secrets and variables → Actions
 
 추가할 Secrets:
+
 - `ANTHROPIC_API_KEY`: Claude API 키
 - `GEMINI_API_KEY`: Gemini API 키
 - `PERPLEXITY_API_KEY`: Perplexity API 키
@@ -218,6 +225,7 @@ Body:
 캐싱 레이어를 어떻게 구현할지 결정이 필요합니다.
 
 요구사항:
+
 - 100,000 동시 접속
 - 밀리초 단위 응답
 - 데이터 영속성 필요
@@ -238,11 +246,13 @@ Body:
 ## 🎨 실제 토론 예시
 
 **입력**:
+
 ```bash
 python scripts/auto-debate.py "microservices vs monolith" --rounds 3
 ```
 
 **출력**:
+
 ```
 🔥 Starting debate: microservices vs monolith
 
@@ -319,16 +329,19 @@ IMPLEMENTATION NOTES:
 ## 💡 팁
 
 ### 토론 품질 향상
+
 - 구체적인 컨텍스트 제공
 - 요구사항 명시 (성능, 보안, 비용 등)
 - 대안 미리 나열 (선택지가 많을수록 좋음)
 
 ### 비용 절감
+
 - `--quick` 옵션으로 2라운드만 실행
 - Perplexity는 정말 필요할 때만
 - 로컬 테스트는 무료 (API 키만 있으면 됨)
 
 ### 검색 최적화
+
 - 키워드 + 컨텍스트 조합
 - "NoiseComputer 곱셈 최적화" > "곱셈"
 - 태그 활용 (architecture, performance 등)

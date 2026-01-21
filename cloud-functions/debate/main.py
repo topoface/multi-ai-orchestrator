@@ -30,7 +30,7 @@ class QuickDebateEngine:
 
         # Initialize Vertex AI
         vertexai.init(project=GCP_PROJECT_ID, location=GCP_LOCATION)
-        self.gemini = GenerativeModel('gemini-2.0-flash-exp')
+        self.gemini = GenerativeModel('gemini-2.0-flash')  # Production model for paid tier
 
     def get_claude_opinion(self, context: str = "") -> str:
         """Claude 의견"""
