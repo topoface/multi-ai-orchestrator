@@ -101,10 +101,12 @@ class DebateEngine:
         # Fixed expert personas
         self.claude_persona = "반도체, 통신, 전자, 코딩 등 엔지니어링 분야 최고 전문가"
         self.gemini_persona = "물리, 수학, 품질, 통계 등 이론에 능통한 리차드 파인만"
+        self.perplexity_persona = "물리/수학/품질/통계 이론과 반도체/통신/전자/코딩 엔지니어링 모두에 정통한 중재 전문가"
 
         print(f"\n👤 고정 전문가 역할:", file=sys.stderr)
         print(f"   Claude: {self.claude_persona}", file=sys.stderr)
-        print(f"   Gemini: {self.gemini_persona}\n", file=sys.stderr)
+        print(f"   Gemini: {self.gemini_persona}", file=sys.stderr)
+        print(f"   Perplexity: {self.perplexity_persona}\n", file=sys.stderr)
 
     def get_claude_response(self, prompt: str, context: str = "", perplexity_feedback: str = "") -> str:
         """Get response from Claude with assigned persona"""
@@ -184,7 +186,9 @@ class DebateEngine:
         if not PERPLEXITY_API_KEY or not config['participants']['perplexity']['enabled']:
             return {"approved": True, "feedback": "Perplexity not available"}
 
-        prompt = f"""다음은 "{self.topic}"에 대한 두 전문가의 제안입니다.
+        prompt = f"""당신은 {self.perplexity_persona}로서, 두 전문가의 의견을 중재하고 합의에 이르도록 돕는 역할입니다.
+
+다음은 "{self.topic}"에 대한 두 전문가의 제안입니다.
 
 **전문가 A ({self.claude_persona})**:
 {claude_pos}
@@ -192,18 +196,19 @@ class DebateEngine:
 **전문가 B ({self.gemini_persona})**:
 {gemini_pos}
 
-질문: 이 두 제안이 실질적인 합의에 도달했나요?
+중재자로서 질문: 이 두 제안이 실질적인 합의에 도달했나요?
 
 아래 형식으로 답변해주세요:
-DECISION: APPROVE (또는 REJECT)
+DECISION: APPROVE (또는 REJECT, PARTIAL APPROVE)
 REASON: 이유를 1-2문장으로
 
 평가 기준:
 - 두 제안이 서로 일치하는가?
 - 구체적이고 실행 가능한가?
 - 핵심 쟁점에 결론이 있는가?
+- 양측 모두 맞는 말을 한다면, 절충안을 제시하여 합의를 유도할 수 있는가?
 
-한글로 답변해주세요."""
+중재자로서 양측의 장점을 살리면서 합의에 이르도록 판단해주세요. 한글로 답변해주세요."""
 
         try:
             response = requests.post(
@@ -229,8 +234,11 @@ REASON: 이유를 1-2문장으로
 
             for line in result_text.split('\n'):
                 if 'DECISION:' in line:
-                    if 'APPROVE' in line.upper():
-                        approved = True
+                    line_upper = line.upper()
+                    # Only exact "APPROVE" (not PARTIAL APPROVE, NOT APPROVE, etc.)
+                    if 'DECISION: APPROVE' in line_upper or 'DECISION:APPROVE' in line_upper:
+                        if 'PARTIAL' not in line_upper and 'NOT' not in line_upper:
+                            approved = True
                 elif 'REASON:' in line:
                     feedback = line.split('REASON:')[1].strip()
 
