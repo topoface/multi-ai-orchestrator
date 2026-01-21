@@ -11,12 +11,22 @@ from pathlib import Path
 from typing import List, Dict, Any, Tuple
 from datetime import datetime
 import anthropic
-import vertexai
-from vertexai.generative_models import GenerativeModel
 import requests
 from dotenv import load_dotenv
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+
+# Try importing Vertex AI (for local), fallback to Google AI Studio (for GitHub Actions)
+USE_VERTEX_AI = False
+try:
+    import vertexai
+    from vertexai.generative_models import GenerativeModel as VertexGenerativeModel
+    USE_VERTEX_AI = True
+except ImportError:
+    pass
+
+if not USE_VERTEX_AI:
+    import google.generativeai as genai
 
 # Supabase client (optional, only if configured)
 try:
@@ -36,11 +46,15 @@ with open(config_path) as f:
 
 # API Keys
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')  # For Google AI Studio (GitHub Actions)
 PERPLEXITY_API_KEY = os.getenv('PERPLEXITY_API_KEY')
 
-# GCP Configuration for Vertex AI
+# GCP Configuration for Vertex AI (local)
 GCP_PROJECT_ID = os.getenv('GCP_PROJECT_ID')
 GCP_REGION = os.getenv('GCP_REGION', 'us-central1')
+
+# Determine which Gemini API to use
+USE_VERTEX_AI = USE_VERTEX_AI and GCP_PROJECT_ID is not None
 
 # Supabase (optional)
 SUPABASE_URL = os.getenv('SUPABASE_URL')
@@ -57,9 +71,17 @@ class DebateEngine:
         # Initialize AI clients FIRST
         self.claude_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
-        # Initialize Vertex AI for Gemini
-        vertexai.init(project=GCP_PROJECT_ID, location=GCP_REGION)
-        self.gemini_model = GenerativeModel(config['participants']['gemini']['model'])
+        # Initialize Gemini (Vertex AI or Google AI Studio)
+        if USE_VERTEX_AI:
+            print(f"✓ Using Vertex AI (project: {GCP_PROJECT_ID})", file=sys.stderr)
+            vertexai.init(project=GCP_PROJECT_ID, location=GCP_REGION)
+            self.gemini_model = VertexGenerativeModel(config['participants']['gemini']['model'])
+            self.use_vertex = True
+        else:
+            print("✓ Using Google AI Studio API", file=sys.stderr)
+            genai.configure(api_key=GEMINI_API_KEY)
+            self.gemini_model = genai.GenerativeModel(config['participants']['gemini']['model'])
+            self.use_vertex = False
 
         # Initialize Supabase (optional)
         self.supabase_client = None

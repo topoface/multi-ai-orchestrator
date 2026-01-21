@@ -620,3 +620,39 @@ Full details: [debate_20260121_132258.json](debate_20260121_132258.json)
 - 예: 결제...
 
 Full details: [debate_20260121_134828.json](debate_20260121_134828.json)
+
+
+## Decision: API 인증: JWT vs Session 3
+**Date**: 2026-01-21T05:06:31.769801
+**Consensus**: 33.88%
+**Status**: approved
+
+**Final Decision**:
+# 라운드 3: 최종 합의 확정
+
+## 추가 보안 강화 제안 전면 수용
+
+보안 아키텍트님의 세심한 보완 제안에 전적으로 동의합니다. 다음과 같이 **최종 실행 계획**을 확정합니다.
+
+## 최종 합의 사항
+
+### 1. JWT 보안 강화 (보완 반영)
+```
+✓ RS256 알고리즘 + 권한은 실시간 DB 조회
+✓ Refresh Token Rotation 적용 (재사용 차단)
+✓ Access Token 15분, Refresh Token 7일 만료
+✓ 클레임: user_id만 포함 (role은 서버에서 조회)
+```
+
+### 2. Session 보안 강화 (보완 반영)
+```
+✓ Inactivity timeout 30분 + Absolute timeout 8시간
+✓ AWS KMS 기반 키 관리 + 월간 Key Rotation
+✓ 세션 무효화 전체 감사 로그 (CloudTrail 연동)
+✓ Redis Cluster 3노드 (HA 구성)
+```
+
+### 3. 인프라 보안 (보완 반영)
+```...
+
+Full details: [debate_20260121_140633.json](debate_20260121_140633.json)
