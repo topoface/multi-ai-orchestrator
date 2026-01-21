@@ -111,6 +111,9 @@ jobs:
           git add docs/brain/
           if ! git diff --staged --quiet; then
             git commit -m "chore: Add debate results for issue #${{ needs.check-debate-label.outputs.issue_number }}"
+
+            # Pull latest changes and rebase before pushing
+            git pull --rebase origin main
             git push
           fi
 
