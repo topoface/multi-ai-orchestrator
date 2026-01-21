@@ -50,6 +50,9 @@ class DebateEngine:
         self.max_rounds = max_rounds or config['debate']['max_rounds']
         self.history: List[Dict[str, Any]] = []
 
+        # Assign expert personas based on topic
+        self.claude_persona, self.gemini_persona = self.assign_personas(topic)
+
         # Initialize AI clients
         self.claude_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
@@ -66,21 +69,74 @@ class DebateEngine:
             except Exception as e:
                 print(f"⚠ Supabase connection failed: {e}", file=sys.stderr)
 
-    def get_claude_response(self, prompt: str, context: str = "") -> str:
-        """Get response from Claude"""
-        system_prompt = f"""당신은 다른 AI 전문가와 함께 기술적 주제에 대해 **합의안을 만들기 위해** 대화하고 있습니다.
+    def assign_personas(self, topic: str) -> Tuple[str, str]:
+        """Assign expert personas based on the topic"""
+        # Use Claude to automatically assign appropriate expert roles
+        try:
+            message = self.claude_client.messages.create(
+                model="claude-sonnet-4-5-20250929",
+                max_tokens=1000,
+                temperature=0.3,
+                messages=[{
+                    "role": "user",
+                    "content": f"""주제: {topic}
+
+이 주제에 대해 토론할 두 명의 전문가 역할을 정의해주세요.
+두 전문가는 서로 다른 관점이나 전문 분야를 가져야 하며, 건설적인 합의를 도출할 수 있어야 합니다.
+
+다음 형식으로 답변해주세요:
+EXPERT_A: [역할 설명]
+EXPERT_B: [역할 설명]
+
+예시:
+EXPERT_A: 클라우드 아키텍트 - 확장성과 비용 최적화에 중점
+EXPERT_B: 보안 전문가 - 데이터 보호와 컴플라이언스에 중점"""
+                }]
+            )
+
+            response_text = message.content[0].text
+
+            # Parse personas
+            claude_persona = "기술 전문가"  # default
+            gemini_persona = "시스템 설계자"  # default
+
+            for line in response_text.split('\n'):
+                if 'EXPERT_A:' in line:
+                    claude_persona = line.split('EXPERT_A:')[1].strip()
+                elif 'EXPERT_B:' in line:
+                    gemini_persona = line.split('EXPERT_B:')[1].strip()
+
+            print(f"\n👤 전문가 역할 배정:", file=sys.stderr)
+            print(f"   Claude: {claude_persona}", file=sys.stderr)
+            print(f"   Gemini: {gemini_persona}\n", file=sys.stderr)
+
+            return claude_persona, gemini_persona
+
+        except Exception as e:
+            print(f"⚠ 페르소나 배정 실패: {e}, 기본값 사용", file=sys.stderr)
+            return "기술 전문가", "시스템 설계자"
+
+    def get_claude_response(self, prompt: str, context: str = "", perplexity_feedback: str = "") -> str:
+        """Get response from Claude with assigned persona"""
+        feedback_section = f"\n\n**Perplexity 피드백**:\n{perplexity_feedback}" if perplexity_feedback else ""
+
+        system_prompt = f"""당신의 역할: **{self.claude_persona}**
 
 주제: {self.topic}
 
 이전 대화 내용:
-{context}
+{context}{feedback_section}
 
-**목표**: 두 AI의 의견을 종합하여 **실용적이고 합의 가능한 최종 제안**을 작성하는 것입니다.
+**목표**: 3라운드 내에 상대 전문가({self.gemini_persona})와 **실용적인 합의안**을 도출하는 것입니다.
 
-- 다른 AI의 좋은 점을 인정하세요
-- 차이점이 있다면 절충안을 제시하세요
-- 구체적이고 실행 가능한 제안을 작성하세요
-- **반드시 한글로 답변해주세요**"""
+**중요 원칙**:
+1. 당신의 전문 분야 관점에서 의견 제시
+2. 상대 전문가의 관점을 존중하고 절충점 찾기
+3. 구체적이고 실행 가능한 제안 작성
+4. 간결하게 작성 (500-800자)
+5. **반드시 한글로 답변**
+
+**반드시 한글로 답변해주세요.**"""
 
         try:
             message = self.claude_client.messages.create(
@@ -95,23 +151,29 @@ class DebateEngine:
         except Exception as e:
             return f"Error getting Claude response: {e}"
 
-    def get_gemini_response(self, prompt: str, context: str = "") -> str:
-        """Get response from Gemini"""
-        full_prompt = f"""당신은 다른 AI 전문가와 함께 기술적 주제에 대해 **합의안을 만들기 위해** 대화하고 있습니다.
+    def get_gemini_response(self, prompt: str, context: str = "", perplexity_feedback: str = "") -> str:
+        """Get response from Gemini with assigned persona"""
+        feedback_section = f"\n\n**Perplexity 피드백**:\n{perplexity_feedback}" if perplexity_feedback else ""
+
+        full_prompt = f"""당신의 역할: **{self.gemini_persona}**
 
 주제: {self.topic}
 
 이전 대화 내용:
-{context}
+{context}{feedback_section}
 
 {prompt}
 
-**목표**: 두 AI의 의견을 종합하여 **실용적이고 합의 가능한 최종 제안**을 작성하는 것입니다.
+**목표**: 3라운드 내에 상대 전문가({self.claude_persona})와 **실용적인 합의안**을 도출하는 것입니다.
 
-- 다른 AI의 좋은 점을 인정하세요
-- 차이점이 있다면 절충안을 제시하세요
-- 구체적이고 실행 가능한 제안을 작성하세요
-- **반드시 한글로 답변해주세요**"""
+**중요 원칙**:
+1. 당신의 전문 분야 관점에서 의견 제시
+2. 상대 전문가의 관점을 존중하고 절충점 찾기
+3. 구체적이고 실행 가능한 제안 작성
+4. 간결하게 작성 (500-800자)
+5. **반드시 한글로 답변**
+
+**반드시 한글로 답변해주세요.**"""
 
         try:
             # Vertex AI SDK uses generation_config as a dict
@@ -127,31 +189,73 @@ class DebateEngine:
         except Exception as e:
             return f"Error getting Gemini response: {e}"
 
-    def get_perplexity_consensus(self, claude_pos: str, gemini_pos: str) -> str:
-        """Get consensus proposal from Perplexity (mediator role)"""
+    def get_perplexity_judgment(self, claude_pos: str, gemini_pos: str) -> Dict[str, Any]:
+        """Get judgment from Perplexity on whether consensus is acceptable"""
         if not PERPLEXITY_API_KEY or not config['participants']['perplexity']['enabled']:
-            return "Perplexity not available"
+            return {"approved": True, "feedback": "Perplexity not available"}
 
-        prompt = f"""당신은 두 AI 전문가의 대화를 듣고 **최종 합의안을 도출하는 중재자**입니다.
+        prompt = f"""당신은 **합의안 검증자**입니다. 두 전문가의 제안을 검토하고 **승인 여부**를 판단하세요.
 
 주제: {self.topic}
 
-Claude의 제안:
+**전문가 A ({self.claude_persona})의 제안**:
 {claude_pos}
 
-Gemini의 제안:
+**전문가 B ({self.gemini_persona})의 제안**:
 {gemini_pos}
 
-**당신의 역할**: 두 제안의 장점을 결합하여 **실행 가능한 최종 합의안**을 작성하세요.
+**평가 기준**:
+1. 두 제안이 실질적으로 합의에 도달했는가?
+2. 제안이 구체적이고 실행 가능한가?
+3. 핵심 쟁점에 대한 명확한 결론이 있는가?
 
-다음을 포함해주세요:
-1. **최종 합의안** (구체적으로)
-2. Claude 제안의 채택할 점
-3. Gemini 제안의 채택할 점
-4. 절충한 부분 (있다면)
-5. 구현 시 주요 고려사항
+**답변 형식** (반드시 이 형식으로):
+DECISION: [APPROVE / REJECT]
+REASON: [1-2문장으로 이유 설명]
+
+APPROVE인 경우: 왜 좋은 합의안인지
+REJECT인 경우: 무엇이 부족하고 어떻게 개선해야 하는지
 
 **반드시 한글로 답변해주세요.**"""
+
+        try:
+            response = requests.post(
+                "https://api.perplexity.ai/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {PERPLEXITY_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": config['participants']['perplexity']['model'],
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": config['participants']['perplexity']['temperature'],
+                    "max_tokens": config['participants']['perplexity']['max_tokens']
+                },
+                timeout=30
+            )
+            response.raise_for_status()
+            result_text = response.json()['choices'][0]['message']['content']
+
+            # Parse decision
+            approved = False
+            feedback = result_text
+
+            for line in result_text.split('\n'):
+                if 'DECISION:' in line:
+                    if 'APPROVE' in line.upper():
+                        approved = True
+                elif 'REASON:' in line:
+                    feedback = line.split('REASON:')[1].strip()
+
+            return {
+                "approved": approved,
+                "feedback": feedback,
+                "full_response": result_text
+            }
+
+        except Exception as e:
+            print(f"⚠ Perplexity 판정 실패: {e}", file=sys.stderr)
+            return {"approved": True, "feedback": f"Error: {e}"}
 
         try:
             response = requests.post(
@@ -219,60 +323,95 @@ Gemini의 제안:
             return intersection / union if union > 0 else 0.0
 
     def conduct_debate(self) -> Dict[str, Any]:
-        """Conduct collaborative discussion to reach consensus"""
-        print(f"\n🤝 Starting collaborative discussion: {self.topic}\n", file=sys.stderr)
-        print("Goal: Create a practical, consensus-based final proposal\n", file=sys.stderr)
+        """Conduct debate with Perplexity approval cycles"""
+        print(f"\n🎯 전문가 토론 시작: {self.topic}\n", file=sys.stderr)
+        print(f"목표: 3라운드 내 합의 도달 → Perplexity 승인\n", file=sys.stderr)
+
+        MAX_CYCLES = 3
+        ROUNDS_PER_CYCLE = 3
 
         context = ""
         claude_final = ""
         gemini_final = ""
-        perplexity_consensus = None
+        perplexity_feedback = ""
+        total_rounds = 0
+        approved = False
 
-        for round_num in range(1, self.max_rounds + 1):
-            print(f"=== Round {round_num}/{self.max_rounds} ===\n", file=sys.stderr)
+        for cycle in range(1, MAX_CYCLES + 1):
+            print(f"\n{'='*80}", file=sys.stderr)
+            print(f"📍 Cycle {cycle}/{MAX_CYCLES}", file=sys.stderr)
+            print(f"{'='*80}\n", file=sys.stderr)
 
-            # Simple prompt for all rounds
-            if round_num == 1:
-                prompt = "이 주제에 대해 당신의 의견을 공유해주세요."
+            if cycle > 1:
+                print(f"⚠️  Perplexity 피드백: {perplexity_feedback}\n", file=sys.stderr)
+
+            # 3 rounds of discussion per cycle
+            for round_num in range(1, ROUNDS_PER_CYCLE + 1):
+                total_rounds += 1
+                print(f"--- Round {round_num}/3 (Cycle {cycle}) ---\n", file=sys.stderr)
+
+                # Prompt
+                if total_rounds == 1:
+                    prompt = "당신의 전문 분야 관점에서 이 주제에 대한 의견을 제시해주세요."
+                else:
+                    prompt = "상대 전문가의 의견을 고려하여 합의 가능한 제안을 작성해주세요."
+
+                # Claude's turn
+                print(f"🔵 Claude ({self.claude_persona})...", file=sys.stderr)
+                claude_response = self.get_claude_response(prompt, context, perplexity_feedback)
+                self.history.append({"cycle": cycle, "round": round_num, "ai": "Claude", "response": claude_response})
+                context += f"\n\nClaude (Cycle {cycle}, Round {round_num}):\n{claude_response}"
+                claude_final = claude_response
+
+                # Gemini's turn
+                print(f"🟢 Gemini ({self.gemini_persona})...\n", file=sys.stderr)
+                gemini_response = self.get_gemini_response(prompt, context, perplexity_feedback)
+                self.history.append({"cycle": cycle, "round": round_num, "ai": "Gemini", "response": gemini_response})
+                context += f"\n\nGemini (Cycle {cycle}, Round {round_num}):\n{gemini_response}"
+                gemini_final = gemini_response
+
+            # Perplexity judgment after 3 rounds
+            print(f"\n🎯 Perplexity 판정 중...", file=sys.stderr)
+            judgment = self.get_perplexity_judgment(claude_final, gemini_final)
+
+            self.history.append({
+                "cycle": cycle,
+                "round": "judgment",
+                "ai": "Perplexity",
+                "response": judgment["full_response"]
+            })
+
+            if judgment["approved"]:
+                print(f"✅ Perplexity 승인! Cycle {cycle}에서 합의 완료.\n", file=sys.stderr)
+                approved = True
+                break
             else:
-                prompt = "계속 대화를 이어가며 합의 가능한 제안을 만들어주세요."
+                print(f"❌ Perplexity 거절", file=sys.stderr)
+                print(f"   이유: {judgment['feedback']}\n", file=sys.stderr)
+                perplexity_feedback = judgment["feedback"]
 
-            # Claude's turn
-            print(f"Claude responding...", file=sys.stderr)
-            claude_response = self.get_claude_response(prompt, context)
-            self.history.append({"round": round_num, "ai": "Claude", "response": claude_response})
-            context += f"\n\nClaude (Round {round_num}):\n{claude_response}"
-            claude_final = claude_response
-
-            # Gemini's turn
-            print(f"Gemini responding...", file=sys.stderr)
-            gemini_response = self.get_gemini_response(prompt, context)
-            self.history.append({"round": round_num, "ai": "Gemini", "response": gemini_response})
-            context += f"\n\nGemini (Round {round_num}):\n{gemini_response}"
-            gemini_final = gemini_response
-
-            # Round 5: Mandatory Perplexity call (mediator role)
-            if round_num == 5:
-                print("\n🎯 Round 5: Calling Perplexity for consensus mediation...\n", file=sys.stderr)
-                perplexity_consensus = self.get_perplexity_consensus(claude_final, gemini_final)
-                self.history.append({"round": round_num, "ai": "Perplexity", "response": perplexity_consensus})
-                context += f"\n\n🎯 PERPLEXITY 최종 합의안:\n{perplexity_consensus}\n\n"
-                print("✅ Perplexity consensus proposal received!\n", file=sys.stderr)
+                if cycle < MAX_CYCLES:
+                    print(f"🔄 Cycle {cycle + 1}으로 재시도...\n", file=sys.stderr)
 
         # Calculate similarity score for reference
         consensus_score = self.calculate_consensus(claude_final, gemini_final)
 
         # Compile results
+        status = "approved" if approved else "max_cycles_reached"
         result = {
             "topic": self.topic,
             "timestamp": datetime.utcnow().isoformat(),
-            "rounds": self.max_rounds,
-            "consensus_score": consensus_score,  # TF-IDF similarity for reference
-            "status": "consensus_reached",
+            "cycles": cycle,
+            "total_rounds": total_rounds,
+            "consensus_score": consensus_score,
+            "status": status,
+            "perplexity_approved": approved,
             "history": self.history,
+            "claude_persona": self.claude_persona,
+            "gemini_persona": self.gemini_persona,
             "claude_final_position": claude_final,
             "gemini_final_position": gemini_final,
-            "perplexity_consensus": perplexity_consensus  # Main result
+            "perplexity_final_judgment": judgment["full_response"]
         }
 
         # Save to Supabase (if available)
@@ -292,12 +431,16 @@ Gemini의 제안:
                 'claude_position': result['claude_final_position'],
                 'gemini_position': result['gemini_final_position'],
                 'consensus_score': result['consensus_score'],
-                'rounds': result['rounds'],
+                'rounds': result['total_rounds'],
                 'metadata': {
                     'timestamp': result['timestamp'],
                     'status': result['status'],
+                    'cycles': result['cycles'],
+                    'perplexity_approved': result['perplexity_approved'],
+                    'claude_persona': result['claude_persona'],
+                    'gemini_persona': result['gemini_persona'],
                     'rounds_detail': result['history'],
-                    'perplexity_consensus': result.get('perplexity_consensus'),
+                    'perplexity_judgment': result.get('perplexity_final_judgment'),
                     'expert_mode': self.expert_mode
                 }
             }
@@ -311,27 +454,31 @@ Gemini의 제안:
 
 def format_result(result: Dict[str, Any]) -> str:
     """Format debate result for display"""
+    approval_status = "✅ 승인됨" if result['perplexity_approved'] else "⚠️ 최대 사이클 도달"
+
     output = [
         f"\n{'='*80}",
-        f"🤝 COLLABORATIVE DISCUSSION RESULT: {result['topic']}",
+        f"🎯 전문가 토론 결과: {result['topic']}",
         f"{'='*80}\n",
         f"Timestamp: {result['timestamp']}",
-        f"Rounds: {result['rounds']}",
-        f"Similarity Score (reference): {result['consensus_score']:.2%}",
+        f"Cycles: {result['cycles']}",
+        f"Total Rounds: {result['total_rounds']}",
+        f"Similarity Score: {result['consensus_score']:.2%}",
+        f"Perplexity 판정: {approval_status}",
         f"Status: {result['status'].upper()}\n",
         f"{'='*80}",
-        "\n## CLAUDE'S FINAL PROPOSAL\n",
+        f"\n## 👤 전문가 A: {result['claude_persona']}\n",
         result['claude_final_position'],
         f"\n{'='*80}",
-        "\n## GEMINI'S FINAL PROPOSAL\n",
+        f"\n## 👤 전문가 B: {result['gemini_persona']}\n",
         result['gemini_final_position'],
     ]
 
-    if result.get('perplexity_consensus'):
+    if result.get('perplexity_final_judgment'):
         output.extend([
             f"\n{'='*80}",
-            "\n## 🎯 PERPLEXITY 최종 합의안 (FINAL CONSENSUS)\n",
-            result['perplexity_consensus']
+            "\n## 🎯 Perplexity 최종 판정\n",
+            result['perplexity_final_judgment']
         ])
 
     output.append(f"\n{'='*80}\n")
