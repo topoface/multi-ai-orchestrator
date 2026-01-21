@@ -16,7 +16,7 @@ participants:
     max_tokens: 4096
 
   perplexity:
-    model: llama-3.1-sonar-large-128k-online
+    model: sonar-pro  # Latest Sonar model (Llama 3.3 70B based)
     temperature: 0.5
     max_tokens: 2048
     enabled: true

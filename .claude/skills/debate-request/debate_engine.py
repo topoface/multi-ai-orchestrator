@@ -14,6 +14,8 @@ import anthropic
 import google.generativeai as genai
 import requests
 from dotenv import load_dotenv
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 # Supabase client (optional, only if configured)
 try:
@@ -172,29 +174,48 @@ Be objective and focus on technical merits."""
             return f"Error getting Perplexity judgment: {e}"
 
     def calculate_consensus(self, claude_text: str, gemini_text: str) -> float:
-        """Calculate consensus score between two positions"""
-        # Simple keyword-based consensus (can be enhanced with embeddings)
-        claude_words = set(claude_text.lower().split())
-        gemini_words = set(gemini_text.lower().split())
-
-        # Remove common words
-        common_stopwords = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'be', 'been'}
-        claude_words -= common_stopwords
-        gemini_words -= common_stopwords
-
-        if not claude_words or not gemini_words:
+        """Calculate consensus score using TF-IDF and cosine similarity"""
+        if not claude_text or not gemini_text:
             return 0.0
 
-        # Calculate Jaccard similarity
-        intersection = len(claude_words & gemini_words)
-        union = len(claude_words | gemini_words)
+        try:
+            # Use TF-IDF vectorization with automatic stopword removal
+            vectorizer = TfidfVectorizer(
+                stop_words='english',
+                lowercase=True,
+                max_features=500,  # Limit to top 500 terms
+                ngram_range=(1, 2),  # Use unigrams and bigrams
+                min_df=1
+            )
 
-        keyword_similarity = intersection / union if union > 0 else 0.0
+            # Create TF-IDF vectors for both texts
+            tfidf_matrix = vectorizer.fit_transform([claude_text, gemini_text])
 
-        # Weight keyword similarity (in production, add embedding similarity)
-        consensus = config['agreement_scoring']['keyword_weight'] * keyword_similarity
+            # Calculate cosine similarity
+            similarity = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
 
-        return min(consensus, 1.0)
+            # Ensure result is between 0 and 1
+            return max(0.0, min(1.0, similarity))
+
+        except Exception as e:
+            # Fallback to simple Jaccard similarity if TF-IDF fails
+            print(f"⚠️ TF-IDF failed, using Jaccard fallback: {e}", file=sys.stderr)
+
+            claude_words = set(claude_text.lower().split())
+            gemini_words = set(gemini_text.lower().split())
+
+            # Remove basic stopwords
+            stopwords = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'be', 'been'}
+            claude_words -= stopwords
+            gemini_words -= stopwords
+
+            if not claude_words or not gemini_words:
+                return 0.0
+
+            intersection = len(claude_words & gemini_words)
+            union = len(claude_words | gemini_words)
+
+            return intersection / union if union > 0 else 0.0
 
     def conduct_debate(self) -> Dict[str, Any]:
         """Conduct the multi-round debate"""
