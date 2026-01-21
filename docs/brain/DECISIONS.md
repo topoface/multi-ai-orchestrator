@@ -586,3 +586,37 @@ Full details: [debate_20260121_033923.json](debate_20260121_033923.json)
 - RabbitMQ (비동기...
 
 Full details: [debate_20260121_132258.json](debate_20260121_132258.json)
+
+
+## Decision: API 인증 방법: JWT vs Session 3
+**Date**: 2026-01-21T04:48:26.871092
+**Consensus**: 0.63%
+**Status**: max_cycles_reached
+
+**Final Decision**:
+# 마이크로서비스 아키텍트의 최종 합의 제안
+
+## 상황 인식 및 양보
+
+상대 전문가(보안 엔지니어)의 의견이 기술적으로 누락되었으나, **보안 관점의 핵심 우려사항을 최우선으로 고려**하여 실용적 합의안을 제시합니다.
+
+## 핵심 합의안: 보안 강화 하이브리드 아키텍처
+
+### 1. 기본 입장 수정
+기존 "JWT 우선" 입장에서 **"보안 계층 필수 + 선택적 확장"으로 전환**합니다.
+
+### 2. 2단계 간소화 전략
+
+**[일반 API] 85-90% 트래픽**
+- **JWT + Redis 블랙리스트 필수 조합**
+- Access Token 10분 TTL (보안 강화)
+- 로그아웃/권한 변경 시 즉시 Redis 무효화
+- Refresh Token은 Redis 저장 (1시간 TTL, Rotation 필수)
+- 예: 상품 조회, 댓글 작성, 프로필 수정
+
+**[민감 API] 10-15% 트래픽**
+- **세션 기반 완전 제어**
+- 3-5분 짧은 TTL + 재인증 요구
+- 예: 결제...
+
+Full details: [debate_20260121_134828.json](debate_20260121_134828.json)

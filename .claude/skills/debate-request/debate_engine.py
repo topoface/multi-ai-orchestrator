@@ -11,7 +11,8 @@ from pathlib import Path
 from typing import List, Dict, Any, Tuple
 from datetime import datetime
 import anthropic
-import google.generativeai as genai
+import vertexai
+from vertexai.generative_models import GenerativeModel
 import requests
 from dotenv import load_dotenv
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -35,8 +36,11 @@ with open(config_path) as f:
 
 # API Keys
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 PERPLEXITY_API_KEY = os.getenv('PERPLEXITY_API_KEY')
+
+# GCP Configuration for Vertex AI
+GCP_PROJECT_ID = os.getenv('GCP_PROJECT_ID')
+GCP_REGION = os.getenv('GCP_REGION', 'us-central1')
 
 # Supabase (optional)
 SUPABASE_URL = os.getenv('SUPABASE_URL')
@@ -53,9 +57,9 @@ class DebateEngine:
         # Initialize AI clients FIRST
         self.claude_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
-        # Initialize Gemini (direct API)
-        genai.configure(api_key=GEMINI_API_KEY)
-        self.gemini_model = genai.GenerativeModel(config['participants']['gemini']['model'])
+        # Initialize Vertex AI for Gemini
+        vertexai.init(project=GCP_PROJECT_ID, location=GCP_REGION)
+        self.gemini_model = GenerativeModel(config['participants']['gemini']['model'])
 
         # Initialize Supabase (optional)
         self.supabase_client = None
