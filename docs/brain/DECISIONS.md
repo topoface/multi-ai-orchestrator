@@ -540,3 +540,14 @@ This has been an exceptionally productive technical dialogue. All three particip
 The conversation evolved from basic RAG vs fine-tuning comparison → nuanced hybrid approach → project-spec...
 
 Full details: [debate_20260121_032035.json](debate_20260121_032035.json)
+
+
+## Decision: 장기 프로젝트에서 ai의 장기기억,맥락 유지를 위해 rag vs 파인튜닝
+**Date**: 2026-01-21T03:39:20.390360
+**Consensus**: 0.71%
+**Status**: consensus_reached
+
+**Final Decision**:
+Error getting Claude response: Error code: 429 - {'type': 'error', 'error': {'type': 'rate_limit_error', 'message': 'This request would exceed the rate limit for your organization (fdd35932-5d7f-426b-9d40-352613390ef8) of 30,000 input tokens per minute. For details, refer to: https://docs.claude.com/en/api/rate-limits. You can see the response headers for current usage. Please reduce the prompt length or the maximum tokens requested, or try again later. You may also contact sales at https://www....
+
+Full details: [debate_20260121_033923.json](debate_20260121_033923.json)
