@@ -16,17 +16,20 @@ from dotenv import load_dotenv
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# Try importing Vertex AI (for local), fallback to Google AI Studio (for GitHub Actions)
-USE_VERTEX_AI = False
+# Import both Vertex AI and Google AI Studio
+# Will decide which to use at runtime based on environment
 try:
     import vertexai
     from vertexai.generative_models import GenerativeModel as VertexGenerativeModel
-    USE_VERTEX_AI = True
+    VERTEX_AVAILABLE = True
 except ImportError:
-    pass
+    VERTEX_AVAILABLE = False
 
-if not USE_VERTEX_AI:
+try:
     import google.generativeai as genai
+    GENAI_AVAILABLE = True
+except ImportError:
+    GENAI_AVAILABLE = False
 
 # Supabase client (optional, only if configured)
 try:
@@ -53,8 +56,9 @@ PERPLEXITY_API_KEY = os.getenv('PERPLEXITY_API_KEY')
 GCP_PROJECT_ID = os.getenv('GCP_PROJECT_ID')
 GCP_REGION = os.getenv('GCP_REGION', 'us-central1')
 
-# Determine which Gemini API to use
-USE_VERTEX_AI = USE_VERTEX_AI and GCP_PROJECT_ID is not None
+# Determine which Gemini API to use at runtime
+# Prefer Vertex AI if available and GCP project is configured
+USE_VERTEX_AI = VERTEX_AVAILABLE and GCP_PROJECT_ID is not None
 
 # Supabase (optional)
 SUPABASE_URL = os.getenv('SUPABASE_URL')
@@ -77,11 +81,13 @@ class DebateEngine:
             vertexai.init(project=GCP_PROJECT_ID, location=GCP_REGION)
             self.gemini_model = VertexGenerativeModel(config['participants']['gemini']['model'])
             self.use_vertex = True
-        else:
+        elif GENAI_AVAILABLE:
             print("✓ Using Google AI Studio API", file=sys.stderr)
             genai.configure(api_key=GEMINI_API_KEY)
             self.gemini_model = genai.GenerativeModel(config['participants']['gemini']['model'])
             self.use_vertex = False
+        else:
+            raise ImportError("Neither Vertex AI nor Google AI Studio is available. Install google-cloud-aiplatform or google-generativeai.")
 
         # Initialize Supabase (optional)
         self.supabase_client = None
