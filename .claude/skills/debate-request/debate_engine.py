@@ -92,55 +92,13 @@ class DebateEngine:
             except Exception as e:
                 print(f"⚠ Supabase connection failed: {e}", file=sys.stderr)
 
-        # Assign expert personas based on topic (AFTER clients initialized)
-        self.claude_persona, self.gemini_persona = self.assign_personas(topic)
+        # Fixed expert personas
+        self.claude_persona = "반도체, 통신, 전자, 코딩 등 엔지니어링 분야 최고 전문가"
+        self.gemini_persona = "물리, 수학, 품질, 통계 등 이론에 능통한 리차드 파인만"
 
-    def assign_personas(self, topic: str) -> Tuple[str, str]:
-        """Assign expert personas based on the topic"""
-        # Use Claude to automatically assign appropriate expert roles
-        try:
-            message = self.claude_client.messages.create(
-                model="claude-sonnet-4-5-20250929",
-                max_tokens=1000,
-                temperature=0.3,
-                messages=[{
-                    "role": "user",
-                    "content": f"""주제: {topic}
-
-이 주제에 대해 토론할 두 명의 전문가 역할을 정의해주세요.
-두 전문가는 서로 다른 관점이나 전문 분야를 가져야 하며, 건설적인 합의를 도출할 수 있어야 합니다.
-
-다음 형식으로 답변해주세요:
-EXPERT_A: [역할 설명]
-EXPERT_B: [역할 설명]
-
-예시:
-EXPERT_A: 클라우드 아키텍트 - 확장성과 비용 최적화에 중점
-EXPERT_B: 보안 전문가 - 데이터 보호와 컴플라이언스에 중점"""
-                }]
-            )
-
-            response_text = message.content[0].text
-
-            # Parse personas
-            claude_persona = "기술 전문가"  # default
-            gemini_persona = "시스템 설계자"  # default
-
-            for line in response_text.split('\n'):
-                if 'EXPERT_A:' in line:
-                    claude_persona = line.split('EXPERT_A:')[1].strip()
-                elif 'EXPERT_B:' in line:
-                    gemini_persona = line.split('EXPERT_B:')[1].strip()
-
-            print(f"\n👤 전문가 역할 배정:", file=sys.stderr)
-            print(f"   Claude: {claude_persona}", file=sys.stderr)
-            print(f"   Gemini: {gemini_persona}\n", file=sys.stderr)
-
-            return claude_persona, gemini_persona
-
-        except Exception as e:
-            print(f"⚠ 페르소나 배정 실패: {e}, 기본값 사용", file=sys.stderr)
-            return "기술 전문가", "시스템 설계자"
+        print(f"\n👤 고정 전문가 역할:", file=sys.stderr)
+        print(f"   Claude: {self.claude_persona}", file=sys.stderr)
+        print(f"   Gemini: {self.gemini_persona}\n", file=sys.stderr)
 
     def get_claude_response(self, prompt: str, context: str = "", perplexity_feedback: str = "") -> str:
         """Get response from Claude with assigned persona"""
