@@ -66,32 +66,21 @@ class DebateEngine:
             except Exception as e:
                 print(f"⚠ Supabase connection failed: {e}", file=sys.stderr)
 
-    def get_claude_response(self, prompt: str, context: str = "", ask_agreement: bool = False) -> str:
+    def get_claude_response(self, prompt: str, context: str = "") -> str:
         """Get response from Claude"""
-        base_prompt = f"""당신은 다른 AI 전문가들과 함께 기술적 주제를 탐구하고 있습니다.
+        system_prompt = f"""당신은 다른 AI 전문가와 함께 기술적 주제에 대해 **합의안을 만들기 위해** 대화하고 있습니다.
+
 주제: {self.topic}
 
-이전 토론 내용:
+이전 대화 내용:
 {context}
 
-객관적으로 분석을 공유해주세요. 여러 관점과 장점을 고려해주세요.
-**반드시 한글로 답변해주세요.**"""
+**목표**: 두 AI의 의견을 종합하여 **실용적이고 합의 가능한 최종 제안**을 작성하는 것입니다.
 
-        if ask_agreement:
-            system_prompt = base_prompt + """
-
-중요: 분석 후 반드시 다음을 명시해야 합니다:
-1. 다른 AI의 입장에 대한 동의 수준:
-   AGREEMENT: [AGREE / PARTIAL / DISAGREE]
-
-2. 전문가 의견이 필요한지 여부:
-   EXPERT_NEEDED: [YES / NO]
-
-두 결정에 대한 이유를 설명해주세요."""
-        else:
-            system_prompt = base_prompt + """
-
-입장, 근거, 증거를 명확하게 제시해주세요."""
+- 다른 AI의 좋은 점을 인정하세요
+- 차이점이 있다면 절충안을 제시하세요
+- 구체적이고 실행 가능한 제안을 작성하세요
+- **반드시 한글로 답변해주세요**"""
 
         try:
             message = self.claude_client.messages.create(
@@ -106,32 +95,23 @@ class DebateEngine:
         except Exception as e:
             return f"Error getting Claude response: {e}"
 
-    def get_gemini_response(self, prompt: str, context: str = "", ask_agreement: bool = False) -> str:
+    def get_gemini_response(self, prompt: str, context: str = "") -> str:
         """Get response from Gemini"""
-        base_prompt = f"""당신은 다른 AI 전문가들과 함께 기술적 주제를 탐구하고 있습니다.
+        full_prompt = f"""당신은 다른 AI 전문가와 함께 기술적 주제에 대해 **합의안을 만들기 위해** 대화하고 있습니다.
+
 주제: {self.topic}
 
-이전 토론 내용:
+이전 대화 내용:
 {context}
 
 {prompt}
 
-객관적으로 분석을 공유해주세요. 여러 관점과 장점을 고려해주세요.
-**반드시 한글로 답변해주세요.**"""
+**목표**: 두 AI의 의견을 종합하여 **실용적이고 합의 가능한 최종 제안**을 작성하는 것입니다.
 
-        if ask_agreement:
-            full_prompt = base_prompt + """
-
-중요: 분석 후 반드시 다음을 명시해야 합니다:
-1. 다른 AI의 입장에 대한 동의 수준:
-   AGREEMENT: [AGREE / PARTIAL / DISAGREE]
-
-2. 전문가 의견이 필요한지 여부:
-   EXPERT_NEEDED: [YES / NO]
-
-두 결정에 대한 이유를 설명해주세요."""
-        else:
-            full_prompt = base_prompt
+- 다른 AI의 좋은 점을 인정하세요
+- 차이점이 있다면 절충안을 제시하세요
+- 구체적이고 실행 가능한 제안을 작성하세요
+- **반드시 한글로 답변해주세요**"""
 
         try:
             # Vertex AI SDK uses generation_config as a dict
@@ -147,28 +127,30 @@ class DebateEngine:
         except Exception as e:
             return f"Error getting Gemini response: {e}"
 
-    def get_perplexity_judgment(self, claude_pos: str, gemini_pos: str) -> str:
-        """Get expert judgment from Perplexity"""
+    def get_perplexity_consensus(self, claude_pos: str, gemini_pos: str) -> str:
+        """Get consensus proposal from Perplexity (mediator role)"""
         if not PERPLEXITY_API_KEY or not config['participants']['perplexity']['enabled']:
             return "Perplexity not available"
 
-        prompt = f"""다음 기술 토론에 대해 분석해주세요:
+        prompt = f"""당신은 두 AI 전문가의 대화를 듣고 **최종 합의안을 도출하는 중재자**입니다.
 
 주제: {self.topic}
 
-Claude의 입장:
+Claude의 제안:
 {claude_pos}
 
-Gemini의 입장:
+Gemini의 제안:
 {gemini_pos}
 
-전문가로서 두 입장을 분석하고 다음을 제공해주세요:
-1. 각 접근법의 장점
-2. 각 접근법의 약점
-3. 추천하는 결정
-4. 구현 시 주요 고려사항
+**당신의 역할**: 두 제안의 장점을 결합하여 **실행 가능한 최종 합의안**을 작성하세요.
 
-객관적이고 기술적 장점에 집중해주세요.
+다음을 포함해주세요:
+1. **최종 합의안** (구체적으로)
+2. Claude 제안의 채택할 점
+3. Gemini 제안의 채택할 점
+4. 절충한 부분 (있다면)
+5. 구현 시 주요 고려사항
+
 **반드시 한글로 답변해주세요.**"""
 
         try:
@@ -190,67 +172,7 @@ Gemini의 입장:
             return response.json()['choices'][0]['message']['content']
 
         except Exception as e:
-            return f"Error getting Perplexity judgment: {e}"
-
-    def parse_agreement(self, text: str) -> Tuple[str, bool]:
-        """Parse explicit agreement level and expert need from AI response
-
-        Returns:
-            (agreement_level, needs_expert)
-            agreement_level: 'AGREE', 'PARTIAL', 'DISAGREE', or 'UNKNOWN'
-            needs_expert: True if expert is needed
-        """
-        agreement = 'UNKNOWN'
-        needs_expert = False
-
-        text_upper = text.upper()
-
-        # Parse agreement level (flexible parsing)
-        if 'AGREEMENT:' in text_upper:
-            # Extract the line with AGREEMENT
-            for line in text.upper().split('\n'):
-                if 'AGREEMENT:' in line:
-                    # Check for agreement indicators
-                    if 'STRONG AGREEMENT' in line or 'FULL AGREEMENT' in line or ('AGREE' in line and 'DISAGREE' not in line and 'PARTIAL' not in line):
-                        agreement = 'AGREE'
-                    elif 'PARTIAL' in line or 'MOSTLY' in line:
-                        agreement = 'PARTIAL'
-                    elif 'DISAGREE' in line and 'PARTIAL' not in line:
-                        agreement = 'DISAGREE'
-                    break
-
-        # Parse expert need (flexible)
-        if 'EXPERT_NEEDED:' in text_upper:
-            for line in text.upper().split('\n'):
-                if 'EXPERT_NEEDED:' in line:
-                    if 'YES' in line and 'NO' not in line:
-                        needs_expert = True
-                    elif 'NO' in line:
-                        needs_expert = False
-                    break
-
-        return agreement, needs_expert
-
-    def check_consensus_reached(self, claude_agreement: str, gemini_agreement: str) -> Tuple[bool, str]:
-        """Check if consensus is reached based on explicit agreements
-
-        Returns:
-            (consensus_reached, status)
-        """
-        # Both agree -> consensus!
-        if claude_agreement == 'AGREE' and gemini_agreement == 'AGREE':
-            return True, 'consensus'
-
-        # Both partial -> good enough consensus
-        if claude_agreement in ['AGREE', 'PARTIAL'] and gemini_agreement in ['AGREE', 'PARTIAL']:
-            return True, 'partial_consensus'
-
-        # Any disagree -> no consensus
-        if claude_agreement == 'DISAGREE' or gemini_agreement == 'DISAGREE':
-            return False, 'disagreement'
-
-        # Unknown -> continue discussion
-        return False, 'unclear'
+            return f"Error getting Perplexity consensus: {e}"
 
     def calculate_consensus(self, claude_text: str, gemini_text: str) -> float:
         """Calculate consensus score using TF-IDF and cosine similarity"""
@@ -297,142 +219,60 @@ Gemini의 입장:
             return intersection / union if union > 0 else 0.0
 
     def conduct_debate(self) -> Dict[str, Any]:
-        """Conduct the multi-round debate with explicit agreement checks"""
-        print(f"\n🔥 Starting collaborative discussion: {self.topic}\n", file=sys.stderr)
+        """Conduct collaborative discussion to reach consensus"""
+        print(f"\n🤝 Starting collaborative discussion: {self.topic}\n", file=sys.stderr)
+        print("Goal: Create a practical, consensus-based final proposal\n", file=sys.stderr)
 
         context = ""
         claude_final = ""
         gemini_final = ""
-        consensus_reached = False
-        expert_called = False
+        perplexity_consensus = None
 
         for round_num in range(1, self.max_rounds + 1):
             print(f"=== Round {round_num}/{self.max_rounds} ===\n", file=sys.stderr)
 
-            # Rounds 1-2: Free discussion without agreement check
-            ask_for_agreement = (round_num >= 3)
-
+            # Simple prompt for all rounds
             if round_num == 1:
-                # Round 1: Initial perspectives
-                print("Claude sharing perspective...", file=sys.stderr)
-                prompt = f"다음 주제에 대한 당신의 이해는 무엇인가요: {self.topic}"
-                claude_response = self.get_claude_response(prompt, context)
-                self.history.append({"round": round_num, "ai": "Claude", "response": claude_response})
-                context += f"\n\nClaude (Round {round_num}):\n{claude_response}"
-                claude_final = claude_response
-
-                print("Gemini sharing perspective...", file=sys.stderr)
-                prompt = f"이 주제에 대한 당신의 이해는 무엇인가요?"
-                gemini_response = self.get_gemini_response(prompt, context)
-                self.history.append({"round": round_num, "ai": "Gemini", "response": gemini_response})
-                context += f"\n\nGemini (Round {round_num}):\n{gemini_response}"
-                gemini_final = gemini_response
-
-            elif round_num == 2:
-                # Round 2: Continue discussion
-                print("Continuing discussion...", file=sys.stderr)
-                prompt = f"지금까지 토론을 바탕으로 당신의 생각은 무엇인가요?"
-                gemini_response = self.get_gemini_response(prompt, context)
-                self.history.append({"round": round_num, "ai": "Gemini", "response": gemini_response})
-                context += f"\n\nGemini (Round {round_num}):\n{gemini_response}"
-                gemini_final = gemini_response
-
-                prompt = f"토론에 대한 당신의 생각은?"
-                claude_response = self.get_claude_response(prompt, context)
-                self.history.append({"round": round_num, "ai": "Claude", "response": claude_response})
-                context += f"\n\nClaude (Round {round_num}):\n{claude_response}"
-                claude_final = claude_response
-
+                prompt = "이 주제에 대해 당신의 의견을 공유해주세요."
             else:
-                # Round 3+: Ask for explicit agreement
-                print(f"Round {round_num}: Checking agreement...", file=sys.stderr)
-                prompt = f"지금까지 토론을 바탕으로 당신의 생각은 무엇인가요? 다른 AI의 입장에 동의하나요?"
+                prompt = "계속 대화를 이어가며 합의 가능한 제안을 만들어주세요."
 
-                claude_response = self.get_claude_response(prompt, context, ask_agreement=ask_for_agreement)
-                self.history.append({"round": round_num, "ai": "Claude", "response": claude_response})
-                context += f"\n\nClaude (Round {round_num}):\n{claude_response}"
-                claude_final = claude_response
+            # Claude's turn
+            print(f"Claude responding...", file=sys.stderr)
+            claude_response = self.get_claude_response(prompt, context)
+            self.history.append({"round": round_num, "ai": "Claude", "response": claude_response})
+            context += f"\n\nClaude (Round {round_num}):\n{claude_response}"
+            claude_final = claude_response
 
-                gemini_response = self.get_gemini_response(prompt, context, ask_agreement=ask_for_agreement)
-                self.history.append({"round": round_num, "ai": "Gemini", "response": gemini_response})
-                context += f"\n\nGemini (Round {round_num}):\n{gemini_response}"
-                gemini_final = gemini_response
+            # Gemini's turn
+            print(f"Gemini responding...", file=sys.stderr)
+            gemini_response = self.get_gemini_response(prompt, context)
+            self.history.append({"round": round_num, "ai": "Gemini", "response": gemini_response})
+            context += f"\n\nGemini (Round {round_num}):\n{gemini_response}"
+            gemini_final = gemini_response
 
-                # Parse explicit agreements
-                if ask_for_agreement:
-                    claude_agreement, claude_needs_expert = self.parse_agreement(claude_response)
-                    gemini_agreement, gemini_needs_expert = self.parse_agreement(gemini_response)
+            # Round 5: Mandatory Perplexity call (mediator role)
+            if round_num == 5:
+                print("\n🎯 Round 5: Calling Perplexity for consensus mediation...\n", file=sys.stderr)
+                perplexity_consensus = self.get_perplexity_consensus(claude_final, gemini_final)
+                self.history.append({"round": round_num, "ai": "Perplexity", "response": perplexity_consensus})
+                context += f"\n\n🎯 PERPLEXITY 최종 합의안:\n{perplexity_consensus}\n\n"
+                print("✅ Perplexity consensus proposal received!\n", file=sys.stderr)
 
-                    print(f"  Claude: {claude_agreement}, Expert: {claude_needs_expert}", file=sys.stderr)
-                    print(f"  Gemini: {gemini_agreement}, Expert: {gemini_needs_expert}\n", file=sys.stderr)
-
-                    # Check consensus
-                    consensus_reached, consensus_status = self.check_consensus_reached(claude_agreement, gemini_agreement)
-
-                    if consensus_reached:
-                        print(f"✅ Explicit consensus reached ({consensus_status})! Ending discussion.\n", file=sys.stderr)
-
-                        # Calculate TF-IDF consensus score for reference
-                        consensus_score = self.calculate_consensus(claude_final, gemini_final)
-
-                        result = {
-                            "topic": self.topic,
-                            "timestamp": datetime.utcnow().isoformat(),
-                            "rounds": round_num,
-                            "consensus_type": consensus_status,
-                            "consensus_score": consensus_score,  # TF-IDF score for reference
-                            "claude_agreement": claude_agreement,
-                            "gemini_agreement": gemini_agreement,
-                            "status": "consensus",
-                            "history": self.history,
-                            "claude_final_position": claude_final,
-                            "gemini_final_position": gemini_final,
-                        }
-                        if self.supabase_client:
-                            self.save_to_supabase(result)
-                        return result
-
-                    # Check if both want expert
-                    if claude_needs_expert and gemini_needs_expert and round_num <= 5:
-                        print("🚨 Both AIs request expert! Calling Perplexity...\n", file=sys.stderr)
-                        perplexity_judgment = self.get_perplexity_judgment(claude_final, gemini_final)
-                        self.history.append({"round": round_num, "ai": "Perplexity", "response": perplexity_judgment})
-                        context += f"\n\n🎯 PERPLEXITY EXPERT JUDGMENT:\n{perplexity_judgment}\n\n"
-                        expert_called = True
-                        print("✓ Expert judgment received. Continuing...\n", file=sys.stderr)
-
-                # Auto-call Perplexity after round 5 if not called yet
-                if round_num > 5 and not expert_called:
-                    print("🔍 Round 5+ without consensus. Auto-calling Perplexity...\n", file=sys.stderr)
-                    perplexity_judgment = self.get_perplexity_judgment(claude_final, gemini_final)
-                    self.history.append({"round": round_num, "ai": "Perplexity", "response": perplexity_judgment})
-                    context += f"\n\n🎯 PERPLEXITY EXPERT JUDGMENT (Auto-called):\n{perplexity_judgment}\n\n"
-                    expert_called = True
-                    print("✓ Expert judgment received. Continuing...\n", file=sys.stderr)
-
-                continue  # Skip old round 4+ logic
-
-        # Final consensus check
-        final_consensus = self.calculate_consensus(claude_final, gemini_final)
-
-        # Trigger Perplexity if needed
-        perplexity_judgment = None
-        if self.expert_mode or final_consensus < config['debate']['expert_threshold']:
-            print("Requesting Perplexity expert judgment...", file=sys.stderr)
-            perplexity_judgment = self.get_perplexity_judgment(claude_final, gemini_final)
-            self.history.append({"round": "final", "ai": "Perplexity", "response": perplexity_judgment})
+        # Calculate similarity score for reference
+        consensus_score = self.calculate_consensus(claude_final, gemini_final)
 
         # Compile results
         result = {
             "topic": self.topic,
             "timestamp": datetime.utcnow().isoformat(),
-            "rounds": len(self.history) // 2,
-            "consensus_score": final_consensus,
-            "status": "adopted" if final_consensus >= config['debate']['consensus_threshold'] else "review_required",
+            "rounds": self.max_rounds,
+            "consensus_score": consensus_score,  # TF-IDF similarity for reference
+            "status": "consensus_reached",
             "history": self.history,
             "claude_final_position": claude_final,
             "gemini_final_position": gemini_final,
-            "perplexity_judgment": perplexity_judgment
+            "perplexity_consensus": perplexity_consensus  # Main result
         }
 
         # Save to Supabase (if available)
@@ -457,7 +297,7 @@ Gemini의 입장:
                     'timestamp': result['timestamp'],
                     'status': result['status'],
                     'rounds_detail': result['history'],
-                    'perplexity_judgment': result.get('perplexity_judgment'),
+                    'perplexity_consensus': result.get('perplexity_consensus'),
                     'expert_mode': self.expert_mode
                 }
             }
@@ -473,38 +313,25 @@ def format_result(result: Dict[str, Any]) -> str:
     """Format debate result for display"""
     output = [
         f"\n{'='*80}",
-        f"DEBATE RESULT: {result['topic']}",
+        f"🤝 COLLABORATIVE DISCUSSION RESULT: {result['topic']}",
         f"{'='*80}\n",
         f"Timestamp: {result['timestamp']}",
         f"Rounds: {result['rounds']}",
-    ]
-
-    # Show explicit agreement if available
-    if 'consensus_type' in result:
-        output.extend([
-            f"Agreement Type: {result['consensus_type'].upper()}",
-            f"Claude: {result.get('claude_agreement', 'UNKNOWN')}",
-            f"Gemini: {result.get('gemini_agreement', 'UNKNOWN')}",
-            f"TF-IDF Score (reference): {result['consensus_score']:.2%}",
-        ])
-    else:
-        output.append(f"Consensus: {result['consensus_score']:.2%}")
-
-    output.extend([
+        f"Similarity Score (reference): {result['consensus_score']:.2%}",
         f"Status: {result['status'].upper()}\n",
         f"{'='*80}",
-        "\n## CLAUDE'S FINAL POSITION\n",
+        "\n## CLAUDE'S FINAL PROPOSAL\n",
         result['claude_final_position'],
         f"\n{'='*80}",
-        "\n## GEMINI'S FINAL POSITION\n",
+        "\n## GEMINI'S FINAL PROPOSAL\n",
         result['gemini_final_position'],
-    ])
+    ]
 
-    if result.get('perplexity_judgment'):
+    if result.get('perplexity_consensus'):
         output.extend([
             f"\n{'='*80}",
-            "\n## PERPLEXITY EXPERT JUDGMENT\n",
-            result['perplexity_judgment']
+            "\n## 🎯 PERPLEXITY 최종 합의안 (FINAL CONSENSUS)\n",
+            result['perplexity_consensus']
         ])
 
     output.append(f"\n{'='*80}\n")
