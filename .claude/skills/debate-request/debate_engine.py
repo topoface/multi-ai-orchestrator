@@ -55,7 +55,7 @@ class DebateEngine:
 
         # Initialize Gemini (direct API)
         genai.configure(api_key=GEMINI_API_KEY)
-        self.gemini_model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        self.gemini_model = genai.GenerativeModel(config['participants']['gemini']['model'])
 
         # Initialize Supabase (optional)
         self.supabase_client = None
