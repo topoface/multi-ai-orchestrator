@@ -202,19 +202,29 @@ Be objective and focus on technical merits."""
 
         text_upper = text.upper()
 
-        # Parse agreement level
-        if 'AGREEMENT: AGREE' in text_upper or 'AGREEMENT:AGREE' in text_upper:
-            agreement = 'AGREE'
-        elif 'AGREEMENT: PARTIAL' in text_upper or 'AGREEMENT:PARTIAL' in text_upper:
-            agreement = 'PARTIAL'
-        elif 'AGREEMENT: DISAGREE' in text_upper or 'AGREEMENT:DISAGREE' in text_upper:
-            agreement = 'DISAGREE'
+        # Parse agreement level (flexible parsing)
+        if 'AGREEMENT:' in text_upper:
+            # Extract the line with AGREEMENT
+            for line in text.upper().split('\n'):
+                if 'AGREEMENT:' in line:
+                    # Check for agreement indicators
+                    if 'STRONG AGREEMENT' in line or 'FULL AGREEMENT' in line or ('AGREE' in line and 'DISAGREE' not in line and 'PARTIAL' not in line):
+                        agreement = 'AGREE'
+                    elif 'PARTIAL' in line or 'MOSTLY' in line:
+                        agreement = 'PARTIAL'
+                    elif 'DISAGREE' in line and 'PARTIAL' not in line:
+                        agreement = 'DISAGREE'
+                    break
 
-        # Parse expert need
-        if 'EXPERT_NEEDED: YES' in text_upper or 'EXPERT_NEEDED:YES' in text_upper:
-            needs_expert = True
-        elif 'EXPERT_NEEDED: NO' in text_upper or 'EXPERT_NEEDED:NO' in text_upper:
-            needs_expert = False
+        # Parse expert need (flexible)
+        if 'EXPERT_NEEDED:' in text_upper:
+            for line in text.upper().split('\n'):
+                if 'EXPERT_NEEDED:' in line:
+                    if 'YES' in line and 'NO' not in line:
+                        needs_expert = True
+                    elif 'NO' in line:
+                        needs_expert = False
+                    break
 
         return agreement, needs_expert
 
