@@ -50,10 +50,7 @@ class DebateEngine:
         self.max_rounds = max_rounds or config['debate']['max_rounds']
         self.history: List[Dict[str, Any]] = []
 
-        # Assign expert personas based on topic
-        self.claude_persona, self.gemini_persona = self.assign_personas(topic)
-
-        # Initialize AI clients
+        # Initialize AI clients FIRST
         self.claude_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
         # Initialize Gemini (direct API)
@@ -68,6 +65,9 @@ class DebateEngine:
                 print("✓ Supabase connected", file=sys.stderr)
             except Exception as e:
                 print(f"⚠ Supabase connection failed: {e}", file=sys.stderr)
+
+        # Assign expert personas based on topic (AFTER clients initialized)
+        self.claude_persona, self.gemini_persona = self.assign_personas(topic)
 
     def assign_personas(self, topic: str) -> Tuple[str, str]:
         """Assign expert personas based on the topic"""
@@ -194,29 +194,26 @@ EXPERT_B: 보안 전문가 - 데이터 보호와 컴플라이언스에 중점"""
         if not PERPLEXITY_API_KEY or not config['participants']['perplexity']['enabled']:
             return {"approved": True, "feedback": "Perplexity not available"}
 
-        prompt = f"""당신은 **합의안 검증자**입니다. 두 전문가의 제안을 검토하고 **승인 여부**를 판단하세요.
+        prompt = f"""다음은 "{self.topic}"에 대한 두 전문가의 제안입니다.
 
-주제: {self.topic}
-
-**전문가 A ({self.claude_persona})의 제안**:
+**전문가 A ({self.claude_persona})**:
 {claude_pos}
 
-**전문가 B ({self.gemini_persona})의 제안**:
+**전문가 B ({self.gemini_persona})**:
 {gemini_pos}
 
-**평가 기준**:
-1. 두 제안이 실질적으로 합의에 도달했는가?
-2. 제안이 구체적이고 실행 가능한가?
-3. 핵심 쟁점에 대한 명확한 결론이 있는가?
+질문: 이 두 제안이 실질적인 합의에 도달했나요?
 
-**답변 형식** (반드시 이 형식으로):
-DECISION: [APPROVE / REJECT]
-REASON: [1-2문장으로 이유 설명]
+아래 형식으로 답변해주세요:
+DECISION: APPROVE (또는 REJECT)
+REASON: 이유를 1-2문장으로
 
-APPROVE인 경우: 왜 좋은 합의안인지
-REJECT인 경우: 무엇이 부족하고 어떻게 개선해야 하는지
+평가 기준:
+- 두 제안이 서로 일치하는가?
+- 구체적이고 실행 가능한가?
+- 핵심 쟁점에 결론이 있는가?
 
-**반드시 한글로 답변해주세요.**"""
+한글로 답변해주세요."""
 
         try:
             response = requests.post(
