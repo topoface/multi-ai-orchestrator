@@ -68,29 +68,30 @@ class DebateEngine:
 
     def get_claude_response(self, prompt: str, context: str = "", ask_agreement: bool = False) -> str:
         """Get response from Claude"""
-        base_prompt = f"""You are exploring a technical topic with other AI experts.
-Topic: {self.topic}
+        base_prompt = f"""당신은 다른 AI 전문가들과 함께 기술적 주제를 탐구하고 있습니다.
+주제: {self.topic}
 
-Previous discussion:
+이전 토론 내용:
 {context}
 
-Share your analysis objectively. Consider multiple perspectives and their merits."""
+객관적으로 분석을 공유해주세요. 여러 관점과 장점을 고려해주세요.
+**반드시 한글로 답변해주세요.**"""
 
         if ask_agreement:
             system_prompt = base_prompt + """
 
-IMPORTANT: After your analysis, you MUST explicitly state:
-1. Your agreement level with the other AI's position:
+중요: 분석 후 반드시 다음을 명시해야 합니다:
+1. 다른 AI의 입장에 대한 동의 수준:
    AGREEMENT: [AGREE / PARTIAL / DISAGREE]
 
-2. Whether you think we need expert input:
+2. 전문가 의견이 필요한지 여부:
    EXPERT_NEEDED: [YES / NO]
 
-Explain your reasoning for both decisions."""
+두 결정에 대한 이유를 설명해주세요."""
         else:
             system_prompt = base_prompt + """
 
-Format your response clearly with your position, reasoning, and evidence."""
+입장, 근거, 증거를 명확하게 제시해주세요."""
 
         try:
             message = self.claude_client.messages.create(
@@ -107,27 +108,28 @@ Format your response clearly with your position, reasoning, and evidence."""
 
     def get_gemini_response(self, prompt: str, context: str = "", ask_agreement: bool = False) -> str:
         """Get response from Gemini"""
-        base_prompt = f"""You are exploring a technical topic with other AI experts.
-Topic: {self.topic}
+        base_prompt = f"""당신은 다른 AI 전문가들과 함께 기술적 주제를 탐구하고 있습니다.
+주제: {self.topic}
 
-Previous discussion:
+이전 토론 내용:
 {context}
 
 {prompt}
 
-Share your analysis objectively. Consider multiple perspectives and their merits."""
+객관적으로 분석을 공유해주세요. 여러 관점과 장점을 고려해주세요.
+**반드시 한글로 답변해주세요.**"""
 
         if ask_agreement:
             full_prompt = base_prompt + """
 
-IMPORTANT: After your analysis, you MUST explicitly state:
-1. Your agreement level with the other AI's position:
+중요: 분석 후 반드시 다음을 명시해야 합니다:
+1. 다른 AI의 입장에 대한 동의 수준:
    AGREEMENT: [AGREE / PARTIAL / DISAGREE]
 
-2. Whether you think we need expert input:
+2. 전문가 의견이 필요한지 여부:
    EXPERT_NEEDED: [YES / NO]
 
-Explain your reasoning for both decisions."""
+두 결정에 대한 이유를 설명해주세요."""
         else:
             full_prompt = base_prompt
 
@@ -150,23 +152,24 @@ Explain your reasoning for both decisions."""
         if not PERPLEXITY_API_KEY or not config['participants']['perplexity']['enabled']:
             return "Perplexity not available"
 
-        prompt = f"""Given this technical debate:
+        prompt = f"""다음 기술 토론에 대해 분석해주세요:
 
-Topic: {self.topic}
+주제: {self.topic}
 
-Claude's position:
+Claude의 입장:
 {claude_pos}
 
-Gemini's position:
+Gemini의 입장:
 {gemini_pos}
 
-As an expert, analyze both positions and provide:
-1. Strengths of each approach
-2. Weaknesses of each approach
-3. Your recommended decision
-4. Key considerations for implementation
+전문가로서 두 입장을 분석하고 다음을 제공해주세요:
+1. 각 접근법의 장점
+2. 각 접근법의 약점
+3. 추천하는 결정
+4. 구현 시 주요 고려사항
 
-Be objective and focus on technical merits."""
+객관적이고 기술적 장점에 집중해주세요.
+**반드시 한글로 답변해주세요.**"""
 
         try:
             response = requests.post(
@@ -312,14 +315,14 @@ Be objective and focus on technical merits."""
             if round_num == 1:
                 # Round 1: Initial perspectives
                 print("Claude sharing perspective...", file=sys.stderr)
-                prompt = f"What's your understanding of: {self.topic}"
+                prompt = f"다음 주제에 대한 당신의 이해는 무엇인가요: {self.topic}"
                 claude_response = self.get_claude_response(prompt, context)
                 self.history.append({"round": round_num, "ai": "Claude", "response": claude_response})
                 context += f"\n\nClaude (Round {round_num}):\n{claude_response}"
                 claude_final = claude_response
 
                 print("Gemini sharing perspective...", file=sys.stderr)
-                prompt = f"What's your understanding of this topic?"
+                prompt = f"이 주제에 대한 당신의 이해는 무엇인가요?"
                 gemini_response = self.get_gemini_response(prompt, context)
                 self.history.append({"round": round_num, "ai": "Gemini", "response": gemini_response})
                 context += f"\n\nGemini (Round {round_num}):\n{gemini_response}"
@@ -328,13 +331,13 @@ Be objective and focus on technical merits."""
             elif round_num == 2:
                 # Round 2: Continue discussion
                 print("Continuing discussion...", file=sys.stderr)
-                prompt = f"Based on our discussion so far, what are your thoughts?"
+                prompt = f"지금까지 토론을 바탕으로 당신의 생각은 무엇인가요?"
                 gemini_response = self.get_gemini_response(prompt, context)
                 self.history.append({"round": round_num, "ai": "Gemini", "response": gemini_response})
                 context += f"\n\nGemini (Round {round_num}):\n{gemini_response}"
                 gemini_final = gemini_response
 
-                prompt = f"Your thoughts on the discussion?"
+                prompt = f"토론에 대한 당신의 생각은?"
                 claude_response = self.get_claude_response(prompt, context)
                 self.history.append({"round": round_num, "ai": "Claude", "response": claude_response})
                 context += f"\n\nClaude (Round {round_num}):\n{claude_response}"
@@ -343,7 +346,7 @@ Be objective and focus on technical merits."""
             else:
                 # Round 3+: Ask for explicit agreement
                 print(f"Round {round_num}: Checking agreement...", file=sys.stderr)
-                prompt = f"Based on our discussion, what are your thoughts? Do you agree with the other AI's position?"
+                prompt = f"지금까지 토론을 바탕으로 당신의 생각은 무엇인가요? 다른 AI의 입장에 동의하나요?"
 
                 claude_response = self.get_claude_response(prompt, context, ask_agreement=ask_for_agreement)
                 self.history.append({"round": round_num, "ai": "Claude", "response": claude_response})
