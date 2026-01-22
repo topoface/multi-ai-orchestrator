@@ -79,9 +79,12 @@ jobs:
           # Use awk to extract everything between "### Debate Topic" and next "###"
           TOPIC=$(echo "$ISSUE_BODY" | awk '/### Debate Topic/{flag=1; next} /###/{flag=0} flag' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr '\n' ' ' | sed 's/[[:space:]]\+/ /g' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
-          # Fallback to issue title if body parsing fails
+          # FAIL if body parsing fails - don't waste tokens on wrong question
           if [ -z "$TOPIC" ]; then
-            TOPIC=$(echo "$ISSUE_TITLE" | sed 's/\[Debate\] *//')
+            echo "❌ Error: Could not parse 'Debate Topic' from issue body"
+            echo "Please ensure the issue uses the debate-request template and has a 'Debate Topic' field filled out."
+            gh issue comment $ISSUE_NUMBER --body "❌ **Debate Failed**: Could not parse debate topic from issue body. Please use the debate-request template and fill out the 'Debate Topic' field."
+            exit 1
           fi
 
           echo "topic=$TOPIC" >> $GITHUB_OUTPUT
