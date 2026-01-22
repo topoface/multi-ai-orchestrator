@@ -76,7 +76,8 @@ jobs:
 
           # Extract topic from issue body "### Debate Topic" section
           # This is where users actually write their question
-          TOPIC=$(echo "$ISSUE_BODY" | sed -n '/### Debate Topic/,/###/p' | sed '1d;$d' | sed 's/^[[:space:]]*//' | head -1)
+          # Use awk to extract everything between "### Debate Topic" and next "###"
+          TOPIC=$(echo "$ISSUE_BODY" | awk '/### Debate Topic/{flag=1; next} /###/{flag=0} flag' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr '\n' ' ' | sed 's/[[:space:]]\+/ /g' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
           # Fallback to issue title if body parsing fails
           if [ -z "$TOPIC" ]; then
