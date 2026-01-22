@@ -868,3 +868,38 @@ Full details: [debate_20260121_071550.json](debate_20260121_071550.json)
 ### 4...
 
 Full details: [debate_20260121_073518.json](debate_20260121_073518.json)
+
+
+## Decision: VERTEX AI를 개인 특화 파인 튜닝에 대한 방법 토론
+**Date**: 2026-01-22T01:21:57.656665
+**Consensus**: 49.22%
+**Status**: approved
+
+**Final Decision**:
+# 엔지니어링 관점: 최종 실행 가능 합의안
+
+## 핵심 합의 사항
+
+상대 전문가의 이론적 우려를 **Vertex AI 플랫폼 내에서 실제 해결**하는 방안을 제시합니다.
+
+### 1. 레이어 선택 방법 개선
+
+**합의**: Gradient Norm + 정규화
+- 각 레이어 기울기를 **파라미터 수로 정규화**
+- Vertex AI Custom Training Job에서 간단히 구현 가능
+- vanishing gradient 문제 완화 + 공정한 레이어 비교
+
+**실무 구현**:
+```python
+normalized_grad = layer_grad_norm / sqrt(num_params)
+```
+
+### 2. 하이퍼파라미터 최적화 전략
+
+**합의**: Vizier + 사전 지식 활용
+- Vizier의 Bayesian Optimization 그대로 사용
+- 탐색 공간을 **사전 실험 결과로 제한**
+- 예: learning_rate [1e-4, 5e-4] (과거 성공 범위)
+- 불필...
+
+Full details: [debate_20260122_012159.json](debate_20260122_012159.json)
