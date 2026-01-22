@@ -1,5 +1,1 @@
-blank_issues_enabled: false
-contact_links:
-  - name: 📖 Documentation
-    url: https://github.com/topoface/multi-ai-orchestrator/blob/main/README.md
-    about: Read the project documentation
+blank_issues_enabled: true
