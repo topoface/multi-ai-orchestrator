@@ -903,3 +903,40 @@ normalized_grad = layer_grad_norm / sqrt(num_params)
 - 불필...
 
 Full details: [debate_20260122_012159.json](debate_20260122_012159.json)
+
+
+## Decision: VERTEX AI를 개인 특화 파인 튜닝에 대한 방법 토론
+**Date**: 2026-01-22T01:26:51.186343
+**Consensus**: 33.43%
+**Status**: approved
+
+**Final Decision**:
+# 엔지니어링 관점: 원래 질문 직접 답변
+
+## Vertex AI 개인 특화 파인 튜닝 방법
+
+### 핵심 선택 사항
+
+**1. Vertex AI 기능 선택**
+- **지도 미세 조정(Supervised Fine-Tuning)** 사용
+- Gemini 1.5 Flash 모델 기반 (비용-성능 균형 최적)
+
+**2. 파인 튜닝 방식**
+- **PEFT(LoRA) 권장** - 개인 특화는 소량 데이터이므로 Full Fine-Tuning은 과적합 위험
+- LoRA rank=8로 시작
+- Vertex AI의 Adapter Tuning 기능 활용
+
+**3. 데이터 준비**
+- JSON/JSONL 형식으로 입출력 쌍 구성
+- 최소 100개 샘플 (품질 우선)
+- Vertex AI Dataset API로 관리
+
+**4. 평가 지표**
+- 개인 특화 테스트셋 정답률
+- 추론 레이턴시 < 2초
+
+### 실행 단계
+1단계: Gemini 1.5 Flash + LoRA 설정  
+2단계: 100개 샘플로...
+
+Full details: [debate_20260122_012652.json](debate_20260122_012652.json)
