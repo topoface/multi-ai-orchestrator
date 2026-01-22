@@ -74,8 +74,14 @@ jobs:
           ISSUE_BODY=$(gh issue view $ISSUE_NUMBER --json body --jq '.body')
           ISSUE_TITLE=$(gh issue view $ISSUE_NUMBER --json title --jq '.title')
 
-          # Remove [Debate] prefix if present
-          TOPIC=$(echo "$ISSUE_TITLE" | sed 's/\[Debate\] *//')
+          # Extract topic from issue body "### Debate Topic" section
+          # This is where users actually write their question
+          TOPIC=$(echo "$ISSUE_BODY" | sed -n '/### Debate Topic/,/###/p' | sed '1d;$d' | sed 's/^[[:space:]]*//' | head -1)
+
+          # Fallback to issue title if body parsing fails
+          if [ -z "$TOPIC" ]; then
+            TOPIC=$(echo "$ISSUE_TITLE" | sed 's/\[Debate\] *//')
+          fi
 
           echo "topic=$TOPIC" >> $GITHUB_OUTPUT
           echo "body<<EOF" >> $GITHUB_OUTPUT
